@@ -1,0 +1,120 @@
+{
+  "projectType": "general",
+  "projectName": "Claude Code Best Practice",
+  "projectDescription": "Comprehensive best practices, patterns, and reference implementations for Claude Code configuration and workflows",
+  "theme": "palm",
+  "primaryColor": "#94cb04",
+  "lightColor": "#545454",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/commands",
+              "concepts/subagents",
+              "concepts/skills",
+              "concepts/hooks",
+              "concepts/mcp-servers",
+              "concepts/settings",
+              "concepts/memory"
+            ]
+          },
+          {
+            "group": "Best Practices",
+            "pages": [
+              "best-practices/commands",
+              "best-practices/subagents",
+              "best-practices/skills",
+              "best-practices/mcp",
+              "best-practices/memory",
+              "best-practices/settings",
+              "best-practices/cli-startup-flags"
+            ]
+          },
+          {
+            "group": "Workflows & Patterns",
+            "pages": [
+              "workflows/orchestration-workflow",
+              "workflows/rpi-workflow",
+              "workflows/agent-teams",
+              "workflows/git-worktrees"
+            ]
+          },
+          {
+            "group": "Implementation Examples",
+            "pages": [
+              "examples/commands-implementation",
+              "examples/subagents-implementation",
+              "examples/skills-implementation"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reports & Deep Dives",
+        "groups": [
+          {
+            "group": "Technical Reports",
+            "pages": [
+              "reports/agent-memory",
+              "reports/advanced-tool-use",
+              "reports/sdk-vs-cli-system-prompts",
+              "reports/global-vs-project-settings",
+              "reports/skills-discovery-monorepos",
+              "reports/browser-automation-mcp",
+              "reports/usage-rate-limits"
+            ]
+          },
+          {
+            "group": "Tips & Tricks",
+            "pages": [
+              "tips/workflow-tips",
+              "tips/debugging-tips",
+              "tips/utility-tips",
+              "tips/boris-cherny-tips"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Commands - Entry-point prompts for workflows invoked with /command-name",
+    "Subagents - Custom agents with specialized tools, permissions, and models",
+    "Skills - Reusable knowledge and workflows with progressive disclosure",
+    "Hooks - Deterministic scripts for lifecycle events",
+    "MCP Servers - Model Context Protocol connections to external tools",
+    "Settings - Hierarchical configuration system",
+    "Memory - Persistent context via CLAUDE.md files",
+    "Orchestration Patterns - Command → Agent → Skill architecture"
+  ],
+  "publicApiSurface": [
+    "/.claude/commands/<name>.md - Custom command definitions",
+    "/.claude/agents/<name>.md - Custom subagent definitions",
+    "/.claude/skills/<name>/SKILL.md - Skill definitions",
+    "/.claude/hooks/ - Hook scripts and configuration",
+    "/.claude/settings.json - Project settings",
+    "/.mcp.json - MCP server configuration",
+    "/CLAUDE.md - Project memory file",
+    "/weather-orchestrator - Example orchestration command",
+    "/weather-agent - Example subagent with preloaded skills",
+    "/weather-fetcher - Example agent skill (preloaded)",
+    "/weather-svg-creator - Example standalone skill",
+    "Task tool - Subagent invocation API",
+    "Skill tool - Skill invocation API",
+    "String substitutions - $ARGUMENTS, $N, ${CLAUDE_SESSION_ID}",
+    "Dynamic context injection - !`command` syntax",
+    "Frontmatter fields - YAML configuration for commands/agents/skills"
+  ]
+}

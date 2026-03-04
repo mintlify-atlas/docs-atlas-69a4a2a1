@@ -1,0 +1,612 @@
+---
+title: Settings
+description: Hierarchical configuration system for permissions, hooks, models, and behavior
+---
+
+## What Are Settings?
+
+Claude Code's settings system controls:
+
+- **Permissions** (allow/ask/deny rules for tools)
+- **Hooks** (lifecycle event handlers)
+- **MCP servers** (external integrations)
+- **Models** (default model selection)
+- **Display** (status line, spinner, output style)
+- **Sandbox** (bash command isolation)
+- **Environment variables** (via `env` key)
+
+<Info>
+  Settings are configured in `settings.json` files with a hierarchical override system.
+</Info>
+
+## Why Settings Matter
+
+Settings enable:
+
+- **Team collaboration**: Share project settings via git
+- **Personal customization**: Override team settings locally
+- **Security**: Control tool access with granular permissions
+- **Automation**: Configure hooks for notifications and validation
+- **Consistency**: Standardize model, permissions, and behavior across projects
+
+## Settings Hierarchy
+
+Claude Code uses a 5-level user-writable override chain:
+
+<Steps>
+  <Step title="Command line arguments (highest)">
+    **Scope**: Single session
+    
+    **Example**:
+    ```bash
+    claude --model opus --agent my-agent
+    ```
+  </Step>
+  
+  <Step title="Project local settings">
+    **Location**: `.claude/settings.local.json`
+    
+    **Scope**: Project-specific personal overrides
+    
+    **Version control**: Git-ignored
+    
+    ```json
+    {
+      "disableAllHooks": true,
+      "model": "haiku"
+    }
+    ```
+  </Step>
+  
+  <Step title="Project settings">
+    **Location**: `.claude/settings.json`
+    
+    **Scope**: Team-shared project settings
+    
+    **Version control**: Committed to git
+    
+    ```json
+    {
+      "permissions": {
+        "allow": ["Edit(*)", "Write(*)"]
+      },
+      "enableAllProjectMcpServers": true
+    }
+    ```
+  </Step>
+  
+  <Step title="User local settings">
+    **Location**: `~/.claude/settings.local.json`
+    
+    **Scope**: Personal overrides for all projects
+    
+    ```json
+    {
+      "model": "sonnet"
+    }
+    ```
+  </Step>
+  
+  <Step title="User settings (lowest)">
+    **Location**: `~/.claude/settings.json`
+    
+    **Scope**: Global personal defaults
+    
+    ```json
+    {
+      "language": "english",
+      "cleanupPeriodDays": 30
+    }
+    ```
+  </Step>
+</Steps>
+
+**Policy layer** (enforced, cannot be overridden):
+
+- **Location**: `managed-settings.json` (organization-controlled)
+- **Purpose**: Security policies, compliance requirements
+- **Precedence**: Highest — overrides all user settings
+
+<Warning>
+  **Permission precedence**: `deny` rules always win, regardless of lower-priority `allow` rules.
+</Warning>
+
+## Core Settings
+
+### General Configuration
+
+<ParamField path="model" type="string" default="default">
+  Default model for sessions.
+  
+  **Accepted values**: `sonnet`, `opus`, `haiku`, `default`, or full model IDs
+  
+  ```json
+  {"model": "opus"}
+  ```
+</ParamField>
+
+<ParamField path="agent" type="string">
+  Default agent for the main conversation. Value is the agent name from `.claude/agents/`.
+  
+  ```json
+  {"agent": "code-reviewer"}
+  ```
+</ParamField>
+
+<ParamField path="language" type="string" default="english">
+  Claude's preferred response language.
+  
+  ```json
+  {"language": "japanese"}
+  ```
+</ParamField>
+
+<ParamField path="cleanupPeriodDays" type="number" default="30">
+  Sessions inactive longer than this are deleted at startup.
+  
+  ```json
+  {"cleanupPeriodDays": 60}
+  ```
+</ParamField>
+
+<ParamField path="autoUpdatesChannel" type="string" default="latest">
+  Release channel: `"stable"` or `"latest"`.
+  
+  ```json
+  {"autoUpdatesChannel": "stable"}
+  ```
+</ParamField>
+
+<ParamField path="plansDirectory" type="string" default=".claude/plans/">
+  Directory where `/plan` outputs are stored.
+  
+  ```json
+  {"plansDirectory": "./my-plans"}
+  ```
+</ParamField>
+
+### Permissions
+
+Control what tools Claude can use:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Edit(*)",
+      "Write(*)",
+      "Bash(npm run *)",
+      "Bash(git *)",
+      "WebFetch(domain:*)",
+      "mcp__*"
+    ],
+    "ask": [
+      "Bash(rm *)",
+      "Bash(git push *)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(./secrets/**)"
+    ],
+    "additionalDirectories": ["../shared-libs/"],
+    "defaultMode": "acceptEdits"
+  }
+}
+```
+
+**Permission modes**:
+- `default` — Standard permission checking
+- `acceptEdits` — Auto-accept file edits
+- `askEdits` — Ask before every operation
+- `viewOnly` — Read-only mode
+- `bypassPermissions` — Skip all checks (dangerous)
+- `plan` — Read-only exploration
+
+**Tool syntax**:
+
+| Tool | Syntax | Example |
+|------|--------|----------|
+| Bash | `Bash(pattern)` | `Bash(npm run *)`, `Bash(* install)` |
+| Read | `Read(path)` | `Read(.env)`, `Read(./secrets/**)` |
+| Edit | `Edit(path)` | `Edit(src/**)`, `Edit(*.ts)` |
+| Write | `Write(path)` | `Write(*.md)` |
+| WebFetch | `WebFetch(domain:pattern)` | `WebFetch(domain:example.com)` |
+| Task | `Task(agent)` | `Task(Explore)`, `Task(my-agent)` |
+| MCP | `mcp__server__tool` | `mcp__memory__*` |
+
+<Tip>
+  Bash wildcards can appear at **any position**: `Bash(* install)`, `Bash(npm *)`, `Bash(git * main)`
+</Tip>
+
+### Hooks
+
+Execute scripts at lifecycle events:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/validate.py",
+            "timeout": 5000,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Session started!'",
+            "timeout": 1000,
+            "once": true
+          }
+        ]
+      }
+    ]
+  },
+  "disableAllHooks": false
+}
+```
+
+**18 hook events**: PreToolUse, PostToolUse, PostToolUseFailure, PermissionRequest, UserPromptSubmit, Notification, Stop, SubagentStart, SubagentStop, PreCompact, SessionStart, SessionEnd, Setup, TeammateIdle, TaskCompleted, ConfigChange, WorktreeCreate, WorktreeRemove
+
+<CardGroup cols={1}>
+  <Card title="Hooks Concept" icon="webhook" href="/concepts/hooks">
+    Complete guide to hooks with examples
+  </Card>
+</CardGroup>
+
+### MCP Servers
+
+```json
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["memory", "github"],
+  "disabledMcpjsonServers": ["experimental-server"]
+}
+```
+
+- `enableAllProjectMcpServers`: Auto-approve all `.mcp.json` servers
+- `enabledMcpjsonServers`: Allowlist specific servers
+- `disabledMcpjsonServers`: Blocklist specific servers
+
+<CardGroup cols={1}>
+  <Card title="MCP Servers Concept" icon="plug" href="/concepts/mcp-servers">
+    Learn about MCP server configuration and best servers to use
+  </Card>
+</CardGroup>
+
+### Display & UX
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "git branch --show-current",
+    "padding": 0
+  },
+  "outputStyle": "Explanatory",
+  "spinnerTipsEnabled": true,
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": ["Cooking", "Brewing", "Crafting"]
+  },
+  "spinnerTipsOverride": {
+    "tips": ["Use /compact at ~50%", "Start with plan mode"],
+    "excludeDefault": true
+  },
+  "showTurnDuration": false,
+  "respectGitignore": true
+}
+```
+
+**Status line**: Custom status bar showing context usage, model, cost, session info
+
+**Output styles**: `default`, `Explanatory` (verbose), `Concise`
+
+### Sandbox
+
+Bash command isolation:
+
+```json
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "excludedCommands": ["git", "docker", "gh"],
+    "allowUnsandboxedCommands": false,
+    "network": {
+      "allowUnixSockets": ["/var/run/docker.sock"],
+      "allowLocalBinding": true,
+      "allowedDomains": ["api.example.com"],
+      "deniedDomains": ["malicious.com"]
+    }
+  }
+}
+```
+
+### Attribution
+
+Customize git commit and PR attribution:
+
+```json
+{
+  "attribution": {
+    "commit": "Co-Authored-By: Claude <noreply@anthropic.com>",
+    "pr": "Generated with Claude Code"
+  }
+}
+```
+
+Set to `""` to hide attribution.
+
+### Environment Variables
+
+Set via `env` key to avoid wrapper scripts:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_API_KEY": "...",
+    "NODE_ENV": "development",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50",
+    "MCP_TIMEOUT": "10000"
+  }
+}
+```
+
+**Common variables**:
+- `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`: Auto-compact threshold (1-100, default ~95)
+- `CLAUDE_CODE_ENABLE_TELEMETRY`: Enable/disable telemetry
+- `MCP_TIMEOUT`: MCP startup timeout (ms)
+- `BASH_MAX_TIMEOUT_MS`: Bash command timeout
+
+## Real Example from Repository
+
+From `.claude/settings.json`:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Edit(*)",
+      "Write(*)",
+      "Bash",
+      "WebFetch(domain:*)",
+      "mcp__*"
+    ],
+    "ask": [
+      "Bash(rm *)",
+      "Bash(git *)",
+      "Bash(npm *)"
+    ]
+  },
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": [
+      "Admiring Shayan's code",
+      "Learning from Shayan",
+      "Studying Shayan's patterns"
+    ]
+  },
+  "plansDirectory": "./reports",
+  "outputStyle": "Explanatory",
+  "statusLine": {
+    "type": "command",
+    "command": "echo 'shayan's best practice status line'",
+    "padding": 0
+  },
+  "attribution": {
+    "commit": "Co-Authored-By: Claude <noreply@anthropic.com>",
+    "pr": "Generated with [Claude Code](https://claude.ai/code)"
+  },
+  "respectGitignore": true,
+  "enableAllProjectMcpServers": true,
+  "disableAllHooks": false,
+  "hooks": {
+    "PreToolUse": [/* ... */],
+    "PostToolUse": [/* ... */],
+    "Stop": [/* ... */]
+  }
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use .local.json for personal overrides">
+    Never commit personal preferences to `.claude/settings.json`:
+    
+    ```json
+    // .claude/settings.local.json (git-ignored)
+    {
+      "disableAllHooks": true,
+      "model": "haiku"
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Set granular permissions">
+    Don't use `"allow": ["Bash"]` — be specific:
+    
+    ```json
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git status)",
+      "Bash(git diff *)"
+    ]
+    ```
+  </Accordion>
+  
+  <Accordion title="Use deny for sensitive files">
+    Prevent accidental leaks:
+    
+    ```json
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(./secrets/**)",
+      "Read(**/credentials.json)"
+    ]
+    ```
+  </Accordion>
+  
+  <Accordion title="Disable hooks during development">
+    Speed up testing:
+    
+    ```json
+    {"disableAllHooks": true}
+    ```
+  </Accordion>
+  
+  <Accordion title="Use environment variables for secrets">
+    Never commit API keys:
+    
+    ```json
+    // .claude/settings.local.json
+    {
+      "env": {
+        "GITHUB_TOKEN": "ghp_...",
+        "ANTHROPIC_API_KEY": "sk-..."
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Configuration Commands
+
+<Tabs>
+  <Tab title="Interactive Config">
+    ```bash
+    claude
+    /config
+    ```
+    
+    Opens interactive settings UI with search functionality.
+  </Tab>
+  
+  <Tab title="Permissions">
+    ```bash
+    /permissions
+    ```
+    
+    View and update tool permission rules.
+  </Tab>
+  
+  <Tab title="Hooks">
+    ```bash
+    /hooks
+    ```
+    
+    Manage hooks — view, add, delete without editing JSON.
+  </Tab>
+  
+  <Tab title="MCP">
+    ```bash
+    /mcp
+    ```
+    
+    Manage MCP server connections.
+  </Tab>
+  
+  <Tab title="Status Line">
+    ```bash
+    /statusline
+    ```
+    
+    Set up Claude Code's status line UI.
+  </Tab>
+</Tabs>
+
+## Complete Example
+
+```json
+{
+  "model": "sonnet",
+  "language": "english",
+  "cleanupPeriodDays": 30,
+  "plansDirectory": "./plans",
+  
+  "permissions": {
+    "allow": [
+      "Edit(*)",
+      "Write(*)",
+      "Bash(npm run *)",
+      "Bash(git *)",
+      "mcp__*"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(./secrets/**)"
+    ]
+  },
+  
+  "enableAllProjectMcpServers": true,
+  
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Tool starting'",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  },
+  
+  "sandbox": {
+    "enabled": true,
+    "excludedCommands": ["git", "docker"]
+  },
+  
+  "statusLine": {
+    "type": "command",
+    "command": "git branch --show-current"
+  },
+  
+  "spinnerTipsEnabled": true,
+  "showTurnDuration": false,
+  
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
+```
+
+## Cross-Links
+
+<CardGroup cols={2}>
+  <Card title="Hooks" icon="webhook" href="/concepts/hooks">
+    Configure lifecycle event handlers
+  </Card>
+  
+  <Card title="MCP Servers" icon="plug" href="/concepts/mcp-servers">
+    Enable external integrations
+  </Card>
+  
+  <Card title="Settings Best Practice" icon="star" href="/best-practices/settings">
+    Complete settings reference with all 38 settings
+  </Card>
+  
+  <Card title="Global vs Project Settings" icon="scale" href="/reports/global-vs-project-settings">
+    Which features are global-only vs dual-scope
+  </Card>
+</CardGroup>
+
+## Further Reading
+
+- [Claude Code Settings Documentation](https://code.claude.com/docs/en/settings)
+- [Settings JSON Schema](https://www.schemastore.org/claude-code-settings.json)
+- [Permissions Reference](https://code.claude.com/docs/en/permissions)
+- [Status Line Guide](https://github.com/shanraisshan/claude-code-status-line)

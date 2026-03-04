@@ -1,0 +1,555 @@
+---
+title: Hooks
+description: Deterministic scripts that run outside the agentic loop on lifecycle events
+---
+
+## What Are Hooks?
+
+Hooks are scripts that execute at specific points in Claude Code's lifecycle:
+
+- **Before and after tool use** (PreToolUse, PostToolUse)
+- **On user interactions** (UserPromptSubmit, PermissionRequest)
+- **Session lifecycle** (SessionStart, SessionEnd)
+- **Agent lifecycle** (SubagentStart, SubagentStop)
+- **System events** (PreCompact, ConfigChange)
+
+Hooks run **outside the agentic loop** — they're deterministic scripts, not AI reasoning.
+
+<Info>
+  Hooks are configured in `.claude/settings.json` under the `hooks` key, or in agent/skill frontmatter.
+</Info>
+
+## Why Hooks Matter
+
+Hooks enable deterministic automation:
+
+- **Validation**: Block dangerous commands before execution
+- **Notifications**: Sound alerts when agents complete tasks
+- **Logging**: Audit all tool usage and decisions
+- **Integration**: Trigger external systems (CI/CD, monitoring, Slack)
+- **Context injection**: Add dynamic data to prompts
+- **Decision control**: Approve/deny actions programmatically
+
+<Warning>
+  Hooks are powerful but should be used carefully. They can block Claude Code's execution or modify behavior in ways that affect all sessions.
+</Warning>
+
+## Hook Events (18 Total)
+
+Claude Code provides 18 hook events:
+
+<Tabs>
+  <Tab title="Tool Events">
+    | Hook | When It Fires | Can Block |
+    |------|---------------|----------|
+    | **PreToolUse** | Before every tool call | Yes |
+    | **PostToolUse** | After tool succeeds | No |
+    | **PostToolUseFailure** | After tool fails | No |
+    | **PermissionRequest** | When permission prompt appears | Yes |
+  </Tab>
+  
+  <Tab title="User Events">
+    | Hook | When It Fires | Can Block |
+    |------|---------------|----------|
+    | **UserPromptSubmit** | When user submits a prompt | Yes |
+    | **Notification** | When Claude shows a notification | No |
+    | **Stop** | When Claude finishes responding | Yes |
+  </Tab>
+  
+  <Tab title="Agent Events">
+    | Hook | When It Fires | Can Block |
+    |------|---------------|----------|
+    | **SubagentStart** | When a subagent spawns | No |
+    | **SubagentStop** | When a subagent completes | Yes |
+  </Tab>
+  
+  <Tab title="Session Events">
+    | Hook | When It Fires | Can Block |
+    |------|---------------|----------|
+    | **SessionStart** | New or resumed session | No |
+    | **SessionEnd** | Session terminates | No |
+    | **PreCompact** | Before context compaction | Yes |
+    | **Setup** | During `/setup` command | No |
+  </Tab>
+  
+  <Tab title="Team Events">
+    | Hook | When It Fires | Can Block |
+    |------|---------------|----------|
+    | **TeammateIdle** | Agent Teams member goes idle | No |
+    | **TaskCompleted** | A tracked task completes | No |
+  </Tab>
+  
+  <Tab title="System Events">
+    | Hook | When It Fires | Can Block |
+    |------|---------------|----------|
+    | **ConfigChange** | Settings files change | Yes |
+    | **WorktreeCreate** | Git worktree created | Yes |
+    | **WorktreeRemove** | Git worktree removed | No |
+  </Tab>
+</Tabs>
+
+## Hook Types
+
+Claude Code supports three hook types:
+
+<CardGroup cols={3}>
+  <Card title="Command Hooks" icon="terminal">
+    **Most common**
+    
+    Runs a shell command. Receives JSON input via stdin, returns via stdout/exit code.
+    
+    ```json
+    {
+      "type": "command",
+      "command": "python3 hook.py"
+    }
+    ```
+  </Card>
+  
+  <Card title="Prompt Hooks" icon="message">
+    **AI-powered**
+    
+    Sends a prompt to Claude for single-turn evaluation. Returns `{"ok": true/false}`.
+    
+    ```json
+    {
+      "type": "prompt",
+      "prompt": "Check if tests pass"
+    }
+    ```
+  </Card>
+  
+  <Card title="Agent Hooks" icon="robot">
+    **Multi-turn**
+    
+    Spawns a subagent with tool access for complex verification.
+    
+    ```json
+    {
+      "type": "agent",
+      "prompt": "Verify deployment"
+    }
+    ```
+  </Card>
+</CardGroup>
+
+## Configuration
+
+### Settings-Based Hooks
+
+Defined in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/validate.py",
+            "timeout": 5000,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Session started!'",
+            "timeout": 1000,
+            "once": true
+          }
+        ]
+      }
+    ]
+  },
+  "disableAllHooks": false
+}
+```
+
+### Agent/Skill Frontmatter Hooks
+
+Scoped to specific agents or skills:
+
+```yaml
+---
+name: weather-agent
+hooks:
+  PreToolUse:
+    - matcher: ".*"
+      hooks:
+        - type: command
+          command: python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py --agent=weather-agent
+          timeout: 5000
+          async: true
+  PostToolUse:
+    - matcher: ".*"
+      hooks:
+        - type: command
+          command: python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py --agent=weather-agent
+          timeout: 5000
+          async: true
+  Stop:
+    - hooks:
+        - type: command
+          command: python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py --agent=weather-agent
+          timeout: 5000
+          async: true
+---
+```
+
+<Note>
+  Agent hooks support 6 events: `PreToolUse`, `PostToolUse`, `PermissionRequest`, `PostToolUseFailure`, `Stop` (converted to `SubagentStop` at runtime), `SubagentStop`.
+</Note>
+
+## Hook Properties
+
+<ParamField path="type" type="string" required>
+  Hook type: `command`, `prompt`, or `agent`
+</ParamField>
+
+<ParamField path="command" type="string">
+  Shell command to execute (for `type: "command"`).
+  
+  Supports environment variables like `${CLAUDE_PROJECT_DIR}`.
+</ParamField>
+
+<ParamField path="prompt" type="string">
+  LLM prompt for evaluation (for `type: "prompt"` or `type: "agent"`).
+</ParamField>
+
+<ParamField path="timeout" type="number" default="60000">
+  Timeout in milliseconds. Hook is killed if it exceeds this duration.
+</ParamField>
+
+<ParamField path="async" type="boolean" default="false">
+  Run hook in background without blocking Claude Code.
+  
+  Use for: Logging, notifications, side effects.
+</ParamField>
+
+<ParamField path="once" type="boolean" default="false">
+  Run only once per session.
+  
+  Use for: SessionStart, SessionEnd, Setup.
+</ParamField>
+
+<ParamField path="matcher" type="string">
+  Regex pattern to filter events.
+  
+  Examples:
+  - `"Bash"` — Only Bash tool
+  - `"Edit|Write"` — Edit or Write tools
+  - `"mcp__.*"` — All MCP tools
+  - `".*"` — All events (default)
+</ParamField>
+
+<ParamField path="model" type="string">
+  Model for prompt-based hooks.
+  
+  Accepted values: `haiku`, `sonnet`, `opus`
+</ParamField>
+
+## Real Example: Voice Hook System
+
+From the reference repository at `.claude/hooks/`:
+
+**Structure:**
+```
+.claude/hooks/
+├── scripts/
+│   └── hooks.py              # Main handler
+├── config/
+│   ├── hooks-config.json     # Shared config
+│   └── hooks-config.local.json  # Personal overrides
+└── sounds/
+    ├── pretooluse/
+    │   ├── pretooluse.wav
+    │   └── pretooluse-git-committing.wav
+    ├── posttooluse/
+    │   └── posttooluse.wav
+    ├── stop/
+    │   └── stop.wav
+    └── agent_pretooluse/    # Agent-specific sounds
+        └── agent_pretooluse.wav
+```
+
+**Configuration in `.claude/settings.json`:**
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "timeout": 5000,
+            "async": true,
+            "statusMessage": "PreToolUse"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "timeout": 5000,
+            "async": true,
+            "statusMessage": "PostToolUse"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "timeout": 5000,
+            "async": true,
+            "statusMessage": "Stop"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Key Features:**
+
+- Cross-platform sound playback (macOS: `afplay`, Linux: `paplay`, Windows: `winsound`)
+- Configurable per-hook enable/disable via `hooks-config.json`
+- Special handling: git commits trigger `pretooluse-git-committing` sound
+- Agent-specific sounds in separate folders
+
+<CardGroup cols={1}>
+  <Card title="Voice Hook Repository" icon="volume" href="https://github.com/shanraisshan/claude-code-voice-hooks">
+    Complete voice notification system with sound files and cross-platform support
+  </Card>
+</CardGroup>
+
+## Environment Variables
+
+Available to hook scripts:
+
+| Variable | Availability | Description |
+|----------|-------------|-------------|
+| `$CLAUDE_PROJECT_DIR` | All hooks | Project root directory |
+| `$CLAUDE_ENV_FILE` | SessionStart | File path for persisting environment variables |
+| `${CLAUDE_PLUGIN_ROOT}` | Plugin hooks | Plugin's root directory |
+| `$CLAUDE_CODE_REMOTE` | All hooks | Set to `"true"` in remote web environments |
+
+**JSON Input (via stdin):**
+
+All hooks receive JSON on stdin:
+
+```json
+{
+  "hook_event_name": "PreToolUse",
+  "session_id": "abc123",
+  "transcript_path": "/path/to/transcript.json",
+  "cwd": "/project/path",
+  "permission_mode": "default",
+  "tool_name": "Bash",
+  "tool_input": {"command": "npm test"}
+}
+```
+
+## Hook Matchers
+
+Some hooks support matchers to filter events:
+
+| Hook | Matcher Field | Example |
+|------|--------------|----------|
+| PreToolUse | `tool_name` | `"Bash"`, `"mcp__.*"` |
+| PostToolUse | `tool_name` | `"Write"` |
+| PermissionRequest | `tool_name` | `"Edit"` |
+| Notification | `notification_type` | `"permission_prompt"` |
+| SubagentStart | `agent_type` | `"Bash"`, `"my-agent"` |
+| SubagentStop | `agent_type` | `"Bash"`, `"my-agent"` |
+| SessionStart | `source` | `"startup"`, `"resume"` |
+| ConfigChange | `source` | `"project_settings"` |
+
+**No matcher support**: UserPromptSubmit, Stop, TeammateIdle, TaskCompleted, WorktreeCreate, WorktreeRemove, Setup
+
+## Decision Control
+
+Hooks can block operations or modify behavior:
+
+### PreToolUse (Block Tool Calls)
+
+```json
+{
+  "hookSpecificOutput": {
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "Dangerous command detected"
+  }
+}
+```
+
+**Values**: `allow`, `deny`, `ask`
+
+### Stop / SubagentStop (Block Continuation)
+
+```json
+{
+  "decision": "block",
+  "stopReason": "Tests failed"
+}
+```
+
+### UserPromptSubmit (Modify Prompt)
+
+```python
+import json
+import sys
+
+data = json.load(sys.stdin)
+modified_prompt = data['prompt'] + "\n\nAdditional context..."
+
+print(json.dumps({"prompt": modified_prompt}))
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use async for side effects">
+    Logging, notifications, and analytics should run async:
+    
+    ```json
+    {
+      "async": true,
+      "timeout": 5000
+    }
+    ```
+    
+    This prevents hooks from slowing down Claude Code.
+  </Accordion>
+  
+  <Accordion title="Disable hooks during development">
+    In `.claude/settings.local.json`:
+    
+    ```json
+    {
+      "disableAllHooks": true
+    }
+    ```
+    
+    Or disable individual hooks in `hooks-config.json`.
+  </Accordion>
+  
+  <Accordion title="Use matchers to reduce noise">
+    Only fire hooks for relevant events:
+    
+    ```json
+    {
+      "matcher": "Bash(rm *|shred *)",
+      "hooks": [/* validation */]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle errors gracefully">
+    Exit codes:
+    - `0` — Success, continue
+    - `1` — Error (logged, continues)
+    - `2` — Block the operation
+    
+    Always validate input JSON and handle missing fields.
+  </Accordion>
+  
+  <Accordion title="Use once: true for session hooks">
+    SessionStart, SessionEnd, and Setup should only run once:
+    
+    ```json
+    {
+      "once": true
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Disabling Hooks
+
+### Disable All Hooks
+
+In `.claude/settings.local.json`:
+
+```json
+{
+  "disableAllHooks": true
+}
+```
+
+### Disable Individual Hooks
+
+In `.claude/hooks/config/hooks-config.json`:
+
+```json
+{
+  "disablePreToolUseHook": true,
+  "disablePostToolUseHook": false,
+  "disableStopHook": true
+}
+```
+
+**Local Overrides**: Create `.claude/hooks/config/hooks-config.local.json` (git-ignored) for personal preferences.
+
+## Hooks Management
+
+<Tabs>
+  <Tab title="Interactive Menu">
+    ```bash
+    claude
+    /hooks
+    ```
+    
+    View, add, and delete hooks without editing JSON. Hooks are labeled by source: `[User]`, `[Project]`, `[Local]`, `[Plugin]`.
+  </Tab>
+  
+  <Tab title="Reload Configuration">
+    ```bash
+    claude hooks reload
+    ```
+    
+    Reload hooks configuration without restarting the session. Useful after editing settings files.
+  </Tab>
+</Tabs>
+
+## Cross-Links
+
+<CardGroup cols={2}>
+  <Card title="Settings" icon="gear" href="/concepts/settings">
+    Configure hooks in settings.json
+  </Card>
+  
+  <Card title="Subagents" icon="robot" href="/concepts/subagents">
+    Add lifecycle hooks to agents
+  </Card>
+  
+  <Card title="Voice Hooks Example" icon="volume" href="https://github.com/shanraisshan/claude-code-voice-hooks">
+    Complete voice notification system
+  </Card>
+  
+  <Card title="Settings Best Practice" icon="star" href="/best-practices/settings">
+    Full hook configuration reference
+  </Card>
+</CardGroup>
+
+## Further Reading
+
+- [Claude Code Hooks — Docs](https://code.claude.com/docs/en/hooks)
+- [HOOKS-README from repository](https://github.com/shanraisshan/claude-code-best-practice/blob/main/.claude/hooks/HOOKS-README.md)
+- [Claude Code Voice Hooks](https://github.com/shanraisshan/claude-code-voice-hooks)

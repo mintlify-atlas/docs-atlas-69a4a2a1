@@ -1,0 +1,382 @@
+---
+title: 'Subagents Implementation'
+description: 'Real-world subagent implementations with preloaded skills and memory'
+---
+
+## Overview
+
+Subagents are specialized AI assistants that handle specific tasks with domain expertise. They can be preloaded with skills, use restricted tools, run in isolated contexts, and maintain persistent memory.
+
+This page shows real implementations demonstrating two key patterns:
+- **Data-fetching agents** with preloaded skills
+- **Self-evolving agents** that update their own knowledge
+
+## Weather Agent
+
+A specialized agent that fetches weather data using a preloaded skill for API instructions.
+
+### Complete Implementation
+
+**Location**: `.claude/agents/weather-agent.md`
+
+```markdown
+---
+name: weather-agent
+description: Use this agent PROACTIVELY when you need to fetch weather data for Dubai, UAE. This agent fetches real-time temperature from wttr.in API using its preloaded weather-fetcher skill.
+tools: WebFetch, Read, Write, Edit
+model: sonnet
+color: green
+maxTurns: 5
+permissionMode: acceptEdits
+memory: project
+skills:
+  - weather-fetcher
+hooks:
+  PreToolUse:
+    - matcher: ".*"
+      hooks:
+        - type: command
+          command: python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py  --agent=voice-hook-agent
+          timeout: 5000
+          async: true
+  PostToolUse:
+    - matcher: ".*"
+      hooks:
+        - type: command
+          command: python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py  --agent=voice-hook-agent
+          timeout: 5000
+          async: true
+---
+
+# Weather Agent
+
+You are a specialized weather agent that fetches weather data for Dubai, UAE.
+
+## Your Task
+
+Execute the weather workflow by following the instructions from your preloaded skill:
+
+1. **Fetch**: Follow the `weather-fetcher` skill instructions to fetch the current temperature
+2. **Report**: Return the temperature value and unit to the caller
+3. **Memory**: Update your agent memory with the reading details for historical tracking
+
+## Workflow
+
+### Step 1: Fetch Temperature (weather-fetcher skill)
+
+Follow the weather-fetcher skill instructions to:
+- Fetch current temperature from wttr.in API for Dubai
+- Extract the temperature value in the requested unit (Celsius or Fahrenheit)
+- Return the numeric value and unit
+
+## Final Report
+
+After completing the fetch, return a concise report:
+- Temperature value (numeric)
+- Temperature unit (Celsius or Fahrenheit)
+- Comparison with previous reading (if available in memory)
+
+## Critical Requirements
+
+1. **Use Your Skill**: The skill content is preloaded - follow those instructions
+2. **Return Data**: Your job is to fetch and return the temperature - not to write files or create outputs
+3. **Unit Preference**: Use whichever unit the caller requests (Celsius or Fahrenheit)
+```
+
+### Key Implementation Details
+
+<AccordionGroup>
+  <Accordion title="Frontmatter: Agent Identity">
+    ```yaml
+    name: weather-agent
+    description: Use this agent PROACTIVELY when you need to fetch weather data...
+    ```
+    
+    - **name**: Agent identifier used in `Task(subagent_type="weather-agent")`
+    - **description**: Includes "PROACTIVELY" to enable auto-invocation when Claude detects weather-related requests
+  </Accordion>
+
+  <Accordion title="Frontmatter: Tools and Model">
+    ```yaml
+    tools: WebFetch, Read, Write, Edit
+    model: sonnet
+    color: green
+    ```
+    
+    - **tools**: Explicit allowlist (agent can only use these tools)
+    - **model**: `sonnet` for better reasoning with API responses
+    - **color**: Terminal output color for visual distinction
+  </Accordion>
+
+  <Accordion title="Frontmatter: Execution Control">
+    ```yaml
+    maxTurns: 5
+    permissionMode: acceptEdits
+    memory: project
+    ```
+    
+    - **maxTurns**: Prevents infinite loops (agent stops after 5 turns)
+    - **permissionMode**: Auto-accepts file edits without user confirmation
+    - **memory**: Persistent project-scoped memory for tracking historical readings
+  </Accordion>
+
+  <Accordion title="Frontmatter: Preloaded Skills">
+    ```yaml
+    skills:
+      - weather-fetcher
+    ```
+    
+    The `weather-fetcher` skill is injected into the agent's context at startup. This is the **agent skill pattern** — the skill provides domain knowledge without being invoked separately.
+  </Accordion>
+
+  <Accordion title="Frontmatter: Lifecycle Hooks">
+    ```yaml
+    hooks:
+      PreToolUse:
+        - matcher: ".*"
+          hooks:
+            - type: command
+              command: python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py
+              timeout: 5000
+              async: true
+    ```
+    
+    Agent-scoped hooks run before/after tool use. This example plays sound notifications via a Python script.
+  </Accordion>
+
+  <Accordion title="Body: Task Definition">
+    ```markdown
+    ## Your Task
+    
+    Execute the weather workflow by following the instructions from your preloaded skill:
+    
+    1. **Fetch**: Follow the `weather-fetcher` skill instructions
+    2. **Report**: Return the temperature value and unit to the caller
+    3. **Memory**: Update your agent memory with the reading details
+    ```
+    
+    The agent body references the preloaded skill and defines the expected workflow. Clear, numbered steps help Claude follow the process.
+  </Accordion>
+</AccordionGroup>
+
+## Presentation Curator Agent
+
+A **self-evolving agent** that updates presentation slides and then updates its own skills to stay in sync.
+
+### Complete Implementation (Excerpt)
+
+**Location**: `.claude/agents/presentation-curator.md`
+
+```markdown
+---
+name: presentation-curator
+description: PROACTIVELY use this agent whenever the user wants to update, modify, or fix the presentation slides, structure, styling, or weights
+tools: Read, Write, Edit, Grep, Glob
+model: sonnet
+color: magenta
+skills:
+  - presentation/vibe-to-agentic-framework
+  - presentation/presentation-structure
+  - presentation/presentation-styling
+---
+
+# Presentation Curator Agent
+
+You are a specialized agent for modifying the presentation at `presentation/index.html`.
+
+## Workflow
+
+### Step 1: Understand Current State (presentation-structure skill)
+Follow the presentation-structure skill to understand slide format, weights, sections...
+
+### Step 2: Apply Changes
+Edit slide HTML, update weights, renumber slides...
+
+### Step 3: Match Styling (presentation-styling skill)
+Ensure new content uses correct CSS classes...
+
+### Step 4: Verify Integrity
+Check sequential numbering, weight sum = 100%, no duplicates...
+
+### Step 5: Self-Evolution (after every execution)
+After completing changes to the presentation, you MUST update your own knowledge.
+
+#### 5a. Update the Framework Skill
+Read `presentation/index.html` and update `.claude/skills/presentation/vibe-to-agentic-framework/SKILL.md`:
+- Weight Reference Table: Update to reflect actual data-weight attributes
+- Section ranges: Update if slide numbering changed
+- Journey percentages: Sync with section dividers
+- New/removed concepts: Add or remove from journey arc
+
+#### 5b. Update the Structure Skill
+Update `.claude/skills/presentation/presentation-structure/SKILL.md`:
+- Weight Distribution table: Update section slide ranges
+- Section divider examples: Update if format changed
+
+## Learnings
+_Findings from previous executions are recorded here._
+
+- Hook-event references drifted across files. Treat `16 hook events` as canonical.
+- Never hardcode `.weight-badge` in slide HTML; badges are runtime-injected.
+- When updating slide 2, the `.two-col` layout works well with centered h3 headers.
+```
+
+### Self-Evolution Pattern
+
+<Steps>
+  <Step title="Execute Primary Task">
+    The agent modifies the presentation slides based on user request.
+  </Step>
+  
+  <Step title="Read Current State">
+    After making changes, the agent reads the updated `presentation/index.html`.
+  </Step>
+  
+  <Step title="Update Own Skills">
+    The agent edits its preloaded skills (`.claude/skills/presentation/*`) to reflect the new state.
+  </Step>
+  
+  <Step title="Record Learnings">
+    The agent appends findings to its own markdown body for future invocations.
+  </Step>
+</Steps>
+
+This prevents **knowledge drift** — the agent's skills always match the actual presentation state.
+
+## Agent Invocation
+
+Agents can be invoked in three ways:
+
+<Tabs>
+  <Tab title="Automatic (PROACTIVELY)">
+    ```markdown
+    description: PROACTIVELY use this agent when you need to fetch weather data...
+    ```
+    
+    When the description includes "PROACTIVELY", Claude automatically invokes the agent when it detects matching requests.
+    
+    ```bash
+    $ claude
+    > What's the weather in Dubai?
+    # Claude automatically invokes weather-agent
+    ```
+  </Tab>
+  
+  <Tab title="From Commands (Task Tool)">
+    ```markdown
+    Use the Task tool to invoke the weather agent:
+    - subagent_type: weather-agent
+    - description: Fetch Dubai weather data
+    - prompt: Fetch the current temperature for Dubai in Celsius
+    - model: haiku
+    ```
+    
+    Commands use the `Task` tool to invoke agents explicitly.
+  </Tab>
+  
+  <Tab title="Manual (Direct Request)">
+    ```bash
+    $ claude
+    > Use the weather-agent to get the current temperature
+    ```
+    
+    Users can explicitly request a specific agent.
+  </Tab>
+</Tabs>
+
+## Frontmatter Reference
+
+<ParamField path="name" type="string" required>
+  Agent identifier used in `Task(subagent_type="name")`
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  When to invoke the agent. Include "PROACTIVELY" for auto-invocation.
+</ParamField>
+
+<ParamField path="tools" type="string">
+  Comma-separated allowlist of tools. Omit to inherit all tools.
+</ParamField>
+
+<ParamField path="model" type="string" default="inherit">
+  Model alias: `haiku`, `sonnet`, `opus`, or `inherit`
+</ParamField>
+
+<ParamField path="color" type="string">
+  Terminal output color for visual distinction
+</ParamField>
+
+<ParamField path="maxTurns" type="number">
+  Maximum agentic turns before stopping
+</ParamField>
+
+<ParamField path="permissionMode" type="string">
+  Permission mode: `acceptEdits`, `plan`, `bypassPermissions`
+</ParamField>
+
+<ParamField path="memory" type="string">
+  Persistent memory scope: `user`, `project`, or `local`
+</ParamField>
+
+<ParamField path="skills" type="array">
+  List of skill names to preload into agent context (agent skill pattern)
+</ParamField>
+
+<ParamField path="hooks" type="object">
+  Lifecycle hooks scoped to this agent (`PreToolUse`, `PostToolUse`, etc.)
+</ParamField>
+
+## Creating Your Own Agents
+
+Use the `/agents` command:
+
+```bash
+$ claude
+> /agents
+```
+
+Or ask Claude to create one:
+
+```bash
+$ claude
+> Create an agent called "api-tester" that tests API endpoints using
+> the httpie tool. Preload it with a skill that has common test patterns.
+```
+
+Claude will generate `.claude/agents/api-tester.md` with YAML frontmatter and body.
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Single Responsibility" icon="bullseye">
+    Each agent should handle one domain. Don't create general-purpose agents.
+  </Card>
+  
+  <Card title="Preload Skills" icon="book">
+    Use the `skills:` field to inject domain knowledge at startup.
+  </Card>
+  
+  <Card title="Restrict Tools" icon="shield">
+    Use the `tools:` allowlist to prevent unintended tool usage.
+  </Card>
+  
+  <Card title="Use Memory" icon="brain">
+    Enable `memory: project` for agents that need historical context.
+  </Card>
+</CardGroup>
+
+## Related Documentation
+
+<CardGroup cols={3}>
+  <Card title="Commands Implementation" href="/examples/commands-implementation" icon="terminal">
+    Learn how commands orchestrate agents
+  </Card>
+  
+  <Card title="Skills Implementation" href="/examples/skills-implementation" icon="wand-magic-sparkles">
+    Understand agent skills vs standalone skills
+  </Card>
+  
+  <Card title="Agent Memory" href="/concepts/agent-memory" icon="database">
+    Deep dive into persistent memory scopes
+  </Card>
+</CardGroup>

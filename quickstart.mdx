@@ -1,80 +1,332 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get up and running with Claude Code best practices in under 10 minutes"
 ---
 
-## Get started in three steps
+Get up and running with Claude Code best practices in under 10 minutes. This guide walks you through exploring the reference repository, running a complete orchestration workflow, and creating your first custom command.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, ensure you have Claude Code installed and authenticated:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+```bash
+# Install Claude Code
+npm install -g @anthropic/claude
 
-### Step 2: Deploy your changes
+# Authenticate
+claude login
+```
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
+<Note>
+If you don't have Claude Code yet, visit [code.claude.com](https://code.claude.com) for installation instructions.
+</Note>
+
+## What you'll accomplish
+
+By the end of this quickstart, you'll:
+
+- Understand the `.claude/` directory structure
+- Run a complete Command → Agent → Skill orchestration workflow
+- Create your first custom command
+- Know where to go next for advanced patterns
+
+<Steps>
+
+<Step title="Clone the repository">
+
+Start by cloning the Claude Code best practices repository:
+
+```bash
+git clone https://github.com/shanraisshan/claude-code-best-practice.git
+cd claude-code-best-practice
+```
+
+This repository serves as a reference implementation demonstrating:
+- Commands, agents, and skills working together
+- Cross-platform hooks for voice feedback
+- MCP server integrations
+- Real-world configuration patterns
+
+</Step>
+
+<Step title="Explore the .claude/ directory">
+
+The `.claude/` directory contains all Claude Code customizations. Let's explore its structure:
+
+```bash
+.claude/
+├── commands/           # Entry-point prompts (invoke with /command-name)
+├── agents/             # Custom subagents with specialized tools and permissions
+├── skills/             # Reusable workflows and domain knowledge
+├── hooks/              # Event-driven scripts (PreToolUse, PostToolUse, etc.)
+└── settings.json       # Project-level configuration
+```
+
+<Accordion title="View key configuration files">
+
+**settings.json** - Project-level settings for permissions, hooks, and output style:
+
+```json
+{
+  "permissions": {
+    "allow": ["Edit(*)", "Write(*)", "Bash"],
+    "deny": [],
+    "ask": ["Bash(rm *)", "Bash(git *)"]
+  },
+  "outputStyle": "Explanatory",
+  "plansDirectory": "./reports"
+}
+```
+
+**CLAUDE.md** - Project memory that Claude reads on every session:
+
+```markdown
+# Repository Overview
+
+This is a best practices repository for Claude Code configuration,
+demonstrating patterns for skills, subagents, hooks, and commands.
+
+## Key Components
+
+- Weather System: Command → Agent → Skill orchestration example
+- Hooks: Cross-platform sound notifications
+- Subagents: Feature-specific agents with preloaded skills
+```
+
 </Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+<Tip>
+Keep your `CLAUDE.md` file under 150 lines for reliable adherence. Use multiple CLAUDE.md files in monorepos with ancestor and descendant loading.
+</Tip>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+</Step>
 
-### Step 3: Go live
+<Step title="Run the weather orchestration example">
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
+Now let's run the weather orchestration workflow, which demonstrates the **Command → Agent → Skill** pattern:
+
+```bash
+# Start Claude Code in the repository
+claude
+
+# Run the weather orchestrator command
+/weather-orchestrator
+```
+
+Here's what happens behind the scenes:
+
+<CodeGroup>
+
+```markdown Command (.claude/commands/weather-orchestrator.md)
+---
+description: Fetch weather data for Dubai and create an SVG weather card
+model: haiku
+---
+
+# Weather Orchestrator Command
+
+## Workflow
+
+### Step 1: Ask User Preference
+Use the AskUserQuestion tool to ask the user whether they want 
+the temperature in Celsius or Fahrenheit.
+
+### Step 2: Fetch Weather Data
+Use the Task tool to invoke the weather agent:
+- subagent_type: weather-agent
+- prompt: Fetch the current temperature for Dubai
+
+### Step 3: Create SVG Weather Card
+Use the Skill tool to invoke the weather-svg-creator skill
+```
+
+```yaml Agent (.claude/agents/weather-agent.md)
+---
+name: weather-agent
+description: Use this agent PROACTIVELY when you need to fetch weather data
+tools: WebFetch, Read, Write, Edit
+model: sonnet
+color: green
+skills:
+  - weather-fetcher
+---
+
+# Weather Agent
+
+Execute the weather workflow by following the instructions 
+from your preloaded skill.
+```
+
+```yaml Skill (.claude/skills/weather-fetcher/SKILL.md)
+---
+name: weather-fetcher
+description: Instructions for fetching current weather temperature data
+user-invocable: false
+---
+
+# Weather Fetcher Skill
+
+Fetch the current temperature for Dubai, UAE using the Open-Meteo API.
+
+For Celsius:
+- URL: https://api.open-meteo.com/v1/forecast?latitude=25.2048&longitude=55.2708&current=temperature_2m&temperature_unit=celsius
+```
+
+</CodeGroup>
+
+<Warning>
+Subagents **cannot** invoke other subagents via bash commands. Always use the `Task` tool for subagent orchestration.
+</Warning>
+
+The workflow produces:
+- `orchestration-workflow/weather.svg` - An SVG weather card
+- `orchestration-workflow/output.md` - Temperature summary
+
+</Step>
+
+<Step title="Create your first custom command">
+
+Let's create a simple command to automate commit message generation:
+
+```bash
+# Create the commands directory if it doesn't exist
+mkdir -p .claude/commands
+
+# Create a new command file
+cat > .claude/commands/smart-commit.md << 'EOF'
+---
+description: Generate a commit message from staged changes and create the commit
+model: sonnet
+allowed-tools: Bash(git *)
+---
+
+# Smart Commit Command
+
+Generate a concise, meaningful commit message from the currently staged changes.
+
+## Workflow
+
+1. **Check staged changes**: Run `git diff --staged` to see what's being committed
+2. **Analyze changes**: Determine the nature (feature, fix, refactor, docs, etc.)
+3. **Draft message**: Create a commit message following this format:
+   - First line: Brief summary (50 chars or less)
+   - Blank line
+   - Detailed explanation focusing on "why" rather than "what"
+4. **Create commit**: Run `git commit -m "your message"`
+
+## Requirements
+
+- Only commit if there are staged changes
+- Follow conventional commits style (feat:, fix:, docs:, etc.)
+- Make the message specific and actionable
+EOF
+```
+
+Now test your new command:
+
+```bash
+# Stage some changes
+git add .
+
+# Run your command
+/smart-commit
+```
+
+<Accordion title="Advanced: Add argument support">
+
+You can make commands accept arguments using `$ARGUMENTS` or `$N`:
+
+```markdown
+---
+description: Fix a GitHub issue by number
+argument-hint: [issue-number]
+---
+
+# Fix Issue Command
+
+Fix GitHub issue $0 following our coding standards.
+
+## Context
+- Issue details: !`gh issue view $0`
+
+## Steps
+1. Read the issue description from argument: $ARGUMENTS[0]
+2. Implement the fix
+3. Create a commit referencing issue #$0
+```
+
 </Accordion>
 
-## Next steps
+</Step>
 
-Now that you have your docs running, explore these key features:
+<Step title="Next steps">
+
+Congratulations! You've successfully:
+- Explored the `.claude/` directory structure
+- Run a complete orchestration workflow
+- Created your first custom command
 
 <CardGroup cols={2}>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
+<Card title="Core concepts" icon="book" href="/concepts/commands">
+Deep dive into commands, agents, and skills
 </Card>
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
+<Card title="Commands" icon="terminal" href="/concepts/commands">
+Learn about frontmatter fields and invocation patterns
 </Card>
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
+<Card title="Subagents" icon="users" href="/concepts/subagents">
+Build specialized subagents with tools and permissions
 </Card>
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
+<Card title="Skills" icon="puzzle-piece" href="/concepts/skills">
+Create reusable workflows and domain knowledge
 </Card>
 
 </CardGroup>
 
+### Recommended reading order
+
+1. **[Commands](/concepts/commands)** - Entry-point prompts for workflows
+2. **[Subagents](/concepts/subagents)** - Custom agents with specialized capabilities
+3. **[Skills](/concepts/skills)** - Reusable knowledge and procedures
+4. **[Orchestration workflow](/workflows/orchestration-workflow)** - Command → Agent → Skill patterns
+5. **[Hooks](/concepts/hooks)** - Event-driven automation
+
+### Additional resources
+
+- [Claude Code Documentation](https://code.claude.com/docs) - Official documentation
+- [Best Practices Repository](https://github.com/shanraisshan/claude-code-best-practice) - Reference implementation
+- [Changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md) - Latest features and updates
+
+</Step>
+
+</Steps>
+
+## Key takeaways
+
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+**Commands** are entry points that orchestrate workflows. **Agents** fetch data and execute specialized tasks using their preloaded skills. **Skills** are reusable knowledge blocks that can be invoked independently or preloaded into agents.
 </Note>
+
+The weather example demonstrates two skill patterns:
+- **Agent skill** (`weather-fetcher`): Preloaded into the agent as domain knowledge
+- **Skill** (`weather-svg-creator`): Invoked independently via the Skill tool
+
+This separation of concerns enables:
+- Cleaner code organization
+- Progressive disclosure of context
+- Reusable components across workflows
+
+## Common pitfalls to avoid
+
+- Don't let `CLAUDE.md` exceed 150 lines - it impacts adherence
+- Always use the `Task` tool for subagent orchestration, never bash commands
+- Perform manual `/compact` at ~50% context usage
+- Start with plan mode (`/plan`) for complex tasks
+- Commit often - as soon as a task is completed
+
+<Tip>
+Update Claude Code daily and start your day by reading the [changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md). The CLI is evolving rapidly with new features.
+</Tip>

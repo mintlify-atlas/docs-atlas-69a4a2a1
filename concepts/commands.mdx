@@ -1,0 +1,296 @@
+---
+title: Commands
+description: Entry-point prompts for workflows invoked with slash commands
+---
+
+## What Are Commands?
+
+Commands are entry-point prompts that define reusable workflows in Claude Code. They're invoked by typing `/command-name` in the interactive CLI and serve as the starting point for orchestrating complex tasks.
+
+<Info>
+  Commands live in `.claude/commands/<name>.md` and use YAML frontmatter for configuration.
+</Info>
+
+## Why Commands Matter
+
+Commands bridge the gap between user intent and AI execution:
+
+- **Single entry point**: One `/command` can orchestrate multiple agents and skills
+- **Reusable workflows**: Define once, invoke anytime with consistent behavior
+- **Team collaboration**: Share workflows in version control for team-wide use
+- **Dynamic context**: Inject shell command output and arguments at runtime
+
+<CodeGroup>
+
+```yaml Minimal Command
+---
+description: Fetch weather data for Dubai and create an SVG weather card
+model: haiku
+---
+
+Fetch the current temperature for Dubai, UAE and create a visual SVG weather card.
+```
+
+```yaml Full-Featured Command
+---
+description: Fix a GitHub issue by number, following team coding standards
+argument-hint: [issue-number]
+allowed-tools: Read, Edit, Write, Bash(gh *), Bash(npm test *)
+model: sonnet
+---
+
+Fix GitHub issue $0 following our coding standards.
+
+## Context
+- PR diff: !`gh pr diff`
+- Issue details: !`gh issue view $0`
+
+## Steps
+1. Read the issue description
+2. Understand the requirements
+3. Implement the fix
+4. Write tests
+5. Create a commit
+
+Session: ${CLAUDE_SESSION_ID}
+```
+
+</CodeGroup>
+
+## Frontmatter Fields
+
+<ParamField path="description" type="string" required>
+  What the command does. Shown in autocomplete and used by Claude for auto-discovery.
+</ParamField>
+
+<ParamField path="argument-hint" type="string">
+  Hint shown during autocomplete (e.g., `[issue-number]`, `[filename]`).
+</ParamField>
+
+<ParamField path="allowed-tools" type="string">
+  Tools allowed without permission prompts when this command is active.
+  
+  Examples: `Read, Edit, Write, Bash(npm run *)`, `WebFetch(domain:*)`
+</ParamField>
+
+<ParamField path="model" type="string">
+  Model to use when this command runs.
+  
+  Accepted values: `haiku`, `sonnet`, `opus`
+</ParamField>
+
+## String Substitutions
+
+Commands support dynamic values that are replaced before Claude sees them:
+
+| Variable | Description | Example |
+|----------|-------------|----------|
+| `$ARGUMENTS` | All arguments passed to the command | `/fix-issue urgent` → `"urgent"` |
+| `$ARGUMENTS[N]` | Specific argument by index | `$0`, `$1`, `$2` |
+| `$N` | Shorthand for `$ARGUMENTS[N]` | Same as above |
+| `${CLAUDE_SESSION_ID}` | Current session identifier | Unique session ID |
+| `` !`command` `` | Shell command output injected | `` !`git branch --show-current` `` |
+
+<Tip>
+  Use `` !`command` `` for dynamic context injection. The shell command runs before Claude sees the prompt, allowing you to inject real-time data like git status, file lists, or API responses.
+</Tip>
+
+## How to Use Commands
+
+<Steps>
+  <Step title="Create a command file">
+    Create a markdown file in `.claude/commands/` with YAML frontmatter:
+    
+    ```bash
+    mkdir -p .claude/commands
+    touch .claude/commands/my-workflow.md
+    ```
+  </Step>
+  
+  <Step title="Define the workflow">
+    Add frontmatter and instructions:
+    
+    ```yaml
+    ---
+    description: Deploy to staging environment
+    model: sonnet
+    ---
+    
+    Deploy the current branch to staging:
+    1. Run tests
+    2. Build assets
+    3. Deploy via Docker
+    4. Verify health checks
+    ```
+  </Step>
+  
+  <Step title="Invoke the command">
+    Type `/my-workflow` in Claude Code:
+    
+    ```bash
+    claude
+    /my-workflow
+    ```
+  </Step>
+</Steps>
+
+## Real Example: Weather Orchestrator
+
+From the reference repository at `.claude/commands/weather-orchestrator.md`:
+
+```yaml
+---
+description: Fetch weather data for Dubai and create an SVG weather card
+model: haiku
+---
+
+# Weather Orchestrator Command
+
+Fetch the current temperature for Dubai, Pakistan and create a visual SVG weather card.
+
+## Workflow
+
+### Step 1: Ask User Preference
+
+Use the AskUserQuestion tool to ask the user whether they want the temperature in Celsius or Fahrenheit.
+
+### Step 2: Fetch Weather Data
+
+Use the Task tool to invoke the weather agent:
+- subagent_type: weather-agent
+- description: Fetch Dubai weather data
+- prompt: Fetch the current temperature for Dubai, Pakistan in [unit]. Return the numeric temperature value and unit.
+- model: haiku
+
+### Step 3: Create SVG Weather Card
+
+Use the Skill tool to invoke the weather-svg-creator skill:
+- skill: weather-svg-creator
+
+The skill will use the temperature value from Step 2 to create the SVG card.
+```
+
+<Check>
+  **Key Pattern**: Command orchestrates → Agent fetches data → Skill creates output
+</Check>
+
+## Commands vs Agents vs Skills
+
+| Feature | Commands | Agents | Skills |
+|---------|----------|--------|--------|
+| **Purpose** | Entry point | Task execution | Reusable knowledge |
+| **Invocation** | `/command-name` | `Task(subagent_type)` | `/skill-name` or `Skill(skill)` |
+| **Location** | `.claude/commands/` | `.claude/agents/` | `.claude/skills/` |
+| **Best for** | User-initiated workflows | Specialized task execution | Background knowledge or procedures |
+
+<Tip>
+  **Best Practice**: Use commands for workflows instead of standalone agents. Commands provide better UX with autocomplete and `/` menu visibility.
+</Tip>
+
+## Scope and Priority
+
+When multiple commands share the same name, Claude Code uses this priority order:
+
+<Steps>
+  <Step title="Project (highest priority)">
+    `.claude/commands/` — Project-specific commands, committed to git
+  </Step>
+  
+  <Step title="Personal">
+    `~/.claude/commands/` — Your personal commands across all projects
+  </Step>
+  
+  <Step title="Plugin (lowest priority)">
+    `<plugin>/commands/` — Commands from installed plugins
+  </Step>
+</Steps>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep commands focused">
+    Each command should have a single, clear purpose. Break complex workflows into multiple commands or use agents for sub-tasks.
+    
+    **Good**: `/deploy-staging`, `/run-tests`, `/generate-docs`
+    
+    **Bad**: `/do-everything`
+  </Accordion>
+  
+  <Accordion title="Use descriptive names">
+    Command names appear in autocomplete and should clearly indicate what they do.
+    
+    **Good**: `/fix-github-issue`, `/weather-orchestrator`
+    
+    **Bad**: `/cmd1`, `/thing`
+  </Accordion>
+  
+  <Accordion title="Leverage dynamic context">
+    Use `` !`command` `` to inject real-time data:
+    
+    ```markdown
+    ## Current Branch
+    !`git branch --show-current`
+    
+    ## Staged Files
+    !`git diff --cached --name-only`
+    
+    ## Recent Commits
+    !`git log -5 --oneline`
+    ```
+  </Accordion>
+  
+  <Accordion title="Document the workflow">
+    Add clear step-by-step instructions in the command body. This helps Claude understand the workflow and makes commands self-documenting for your team.
+  </Accordion>
+  
+  <Accordion title="Set appropriate models">
+    Use `haiku` for simple commands, `sonnet` for most workflows, and `opus` for complex reasoning.
+  </Accordion>
+</AccordionGroup>
+
+## Subdirectories
+
+Organize commands in subdirectories for better structure:
+
+```
+.claude/commands/
+├── deploy/
+│   ├── staging.md       # Invoked as /deploy:staging
+│   └── production.md    # Invoked as /deploy:production
+├── fix/
+│   ├── issue.md         # Invoked as /fix:issue
+│   └── bug.md           # Invoked as /fix:bug
+└── generate/
+    ├── docs.md          # Invoked as /generate:docs
+    └── tests.md         # Invoked as /generate:tests
+```
+
+<Info>
+  Commands in subdirectories use the format `/subdir:command-name` in the slash menu.
+</Info>
+
+## Cross-Links
+
+<CardGroup cols={2}>
+  <Card title="Subagents" icon="robot" href="/concepts/subagents">
+    Learn how to invoke agents from commands using the Task tool
+  </Card>
+  
+  <Card title="Skills" icon="book-open" href="/concepts/skills">
+    Use skills in commands for reusable procedures
+  </Card>
+  
+  <Card title="Orchestration Workflow" icon="diagram-project" href="/workflows/orchestration-workflow">
+    See the Command → Agent → Skill pattern in action
+  </Card>
+  
+  <Card title="Commands Best Practice" icon="star" href="/best-practices/commands">
+    Complete reference with all built-in slash commands
+  </Card>
+</CardGroup>
+
+## Further Reading
+
+- [Claude Code Interactive Mode](https://code.claude.com/docs/en/interactive-mode)
+- [Claude Code Slash Commands](https://code.claude.com/docs/en/slash-commands)
+- [Commands Implementation Examples](/examples/commands-implementation)

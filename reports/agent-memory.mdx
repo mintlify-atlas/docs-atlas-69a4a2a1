@@ -1,0 +1,146 @@
+---
+title: 'Agent Memory'
+description: 'Persistent memory for subagents — enabling agents to learn, remember, and build knowledge across sessions'
+---
+
+<Info>
+Introduced in **Claude Code v2.1.33** (February 2026), the `memory` frontmatter field gives each subagent its own persistent markdown-based knowledge store. Before this, every agent invocation started from scratch.
+</Info>
+
+## Overview
+
+The `memory` frontmatter field enables persistent knowledge for subagents:
+
+```yaml
+---
+name: code-reviewer
+description: Reviews code for quality and best practices
+tools: Read, Write, Edit, Bash
+model: sonnet
+memory: user
+---
+
+You are a code reviewer. As you review code, update your agent memory with
+patterns, conventions, and recurring issues you discover.
+```
+
+## Memory Scopes
+
+<CardGroup cols={3}>
+  <Card title="user" icon="user">
+    **Location:** `~/.claude/agent-memory/<agent-name>/`
+    
+    - Not version controlled
+    - Not shared between users
+    - Cross-project knowledge
+    - Recommended default
+  </Card>
+  
+  <Card title="project" icon="folder">
+    **Location:** `.claude/agent-memory/<agent-name>/`
+    
+    - Version controlled
+    - Shared with team
+    - Project-specific knowledge
+  </Card>
+  
+  <Card title="local" icon="folder-closed">
+    **Location:** `.claude/agent-memory-local/<agent-name>/`
+    
+    - Git-ignored
+    - Not shared
+    - Personal project knowledge
+  </Card>
+</CardGroup>
+
+<Note>
+These scopes mirror the settings hierarchy: `~/.claude/settings.json` → `.claude/settings.json` → `.claude/settings.local.json`
+</Note>
+
+## How It Works
+
+<Steps>
+  <Step title="On startup">
+    First 200 lines of `MEMORY.md` are injected into the agent's system prompt
+  </Step>
+  
+  <Step title="Tool access">
+    `Read`, `Write`, `Edit` are auto-enabled so the agent can manage its memory
+  </Step>
+  
+  <Step title="During execution">
+    The agent reads/writes to its memory directory freely
+  </Step>
+  
+  <Step title="Curation">
+    If `MEMORY.md` exceeds 200 lines, the agent moves details into topic-specific files
+  </Step>
+</Steps>
+
+```
+~/.claude/agent-memory/code-reviewer/     # user scope example
+├── MEMORY.md                              # Primary file (first 200 lines loaded)
+├── react-patterns.md                      # Topic-specific file
+└── security-checklist.md                  # Topic-specific file
+```
+
+## Agent Memory vs Other Memory Systems
+
+| System | Who Writes | Who Reads | Scope |
+|--------|-----------|-----------|-------|
+| **CLAUDE.md** | You (manually) | Main Claude + all agents | Project |
+| **Auto-memory** | Main Claude (auto) | Main Claude only | Per-project per-user |
+| **`/memory` command** | You (via editor) | Main Claude only | Per-project per-user |
+| **Agent memory** | The agent itself | That specific agent only | Configurable (user/project/local) |
+
+<Tip>
+These systems are **complementary** — an agent reads both CLAUDE.md (project context) and its own memory (agent-specific knowledge).
+</Tip>
+
+## Practical Example
+
+```yaml
+---
+name: api-developer
+description: Implement API endpoints following team conventions
+tools: Read, Write, Edit, Bash
+model: sonnet
+memory: project
+skills:
+  - api-conventions
+  - error-handling-patterns
+---
+
+Implement API endpoints. Follow the conventions from your preloaded skills.
+As you work, save architectural decisions and patterns to your memory.
+```
+
+This combines **skills** (static knowledge at startup) with **memory** (dynamic knowledge built over time).
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Prompt memory usage">
+    Include explicit instructions in your agent's system prompt:
+    
+    "Before starting, review your memory. After completing, update your memory with what you learned."
+  </Accordion>
+  
+  <Accordion title="Request memory checks">
+    When invoking agents, explicitly ask them to check memory:
+    
+    "Review this PR, and check your memory for patterns you've seen before."
+  </Accordion>
+  
+  <Accordion title="Choose the right scope">
+    - `user` for cross-project knowledge
+    - `project` for team-shared patterns
+    - `local` for personal project-specific notes
+  </Accordion>
+</AccordionGroup>
+
+## Sources
+
+- [Create custom subagents — Claude Code Docs](https://code.claude.com/docs/en/sub-agents)
+- [Manage Claude's memory — Claude Code Docs](https://code.claude.com/docs/en/memory)
+- [Claude Code v2.1.33 Release Notes](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)

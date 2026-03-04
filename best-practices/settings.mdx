@@ -1,0 +1,534 @@
+---
+title: Claude Code Settings Reference
+description: A comprehensive guide to all available configuration options in Claude Code's settings.json files
+icon: gear
+---
+
+A comprehensive guide to all available configuration options in Claude Code's `settings.json` files. As of February 2026, Claude Code exposes **38 settings** and **84 environment variables** (use the `"env"` field in `settings.json` to avoid wrapper scripts).
+
+## Settings Hierarchy
+
+Claude Code settings use a 5-level user-writable override chain plus an enforced policy layer:
+
+| Priority | Location | Scope | Version Control | Purpose |
+|----------|----------|-------|-----------------|------|
+| 1 | Command line arguments | Session | N/A | Single-session overrides |
+| 2 | `.claude/settings.local.json` | Project | No (git-ignored) | Personal project-specific |
+| 3 | `.claude/settings.json` | Project | Yes (committed) | Team-shared settings |
+| 4 | `~/.claude/settings.local.json` | User | N/A | Personal global overrides |
+| 5 | `~/.claude/settings.json` | User | N/A | Global personal defaults |
+
+<Note>
+  **Policy layer:** `managed-settings.json` is organization-enforced and cannot be overridden by local settings.
+</Note>
+
+<Warning>
+  - `deny` rules have highest safety precedence and cannot be overridden by lower-priority allow/ask rules.
+  - Managed settings may lock or override local behavior even if local files specify different values.
+</Warning>
+
+## Core Configuration
+
+### General Settings
+
+<ResponseField name="model" type="string" default="default">
+  Override default model. Accepts aliases (`sonnet`, `opus`, `haiku`) or full model IDs
+</ResponseField>
+
+<ResponseField name="agent" type="string">
+  Set the default agent for the main conversation. Value is the agent name from `.claude/agents/`. Also available via `--agent` CLI flag
+</ResponseField>
+
+<ResponseField name="language" type="string" default="english">
+  Claude's preferred response language
+</ResponseField>
+
+<ResponseField name="cleanupPeriodDays" type="number" default={30}>
+  Sessions inactive longer than this are deleted at startup
+</ResponseField>
+
+<ResponseField name="autoUpdatesChannel" type="string" default="latest">
+  Release channel: `"stable"` or `"latest"`
+</ResponseField>
+
+<ResponseField name="alwaysThinkingEnabled" type="boolean" default={false}>
+  Enable extended thinking by default for all sessions
+</ResponseField>
+
+<ResponseField name="skipWebFetchPreflight" type="boolean" default={false}>
+  Skip WebFetch blocklist check before fetching URLs
+</ResponseField>
+
+**Example:**
+```json
+{
+  "model": "opus",
+  "agent": "code-reviewer",
+  "language": "japanese",
+  "cleanupPeriodDays": 60,
+  "autoUpdatesChannel": "stable",
+  "alwaysThinkingEnabled": true
+}
+```
+
+### Plans Directory
+
+Store plan files in a custom location relative to project root.
+
+<ResponseField name="plansDirectory" type="string" default=".claude/plans/">
+  Directory where `/plan` outputs are stored
+</ResponseField>
+
+**Example:**
+```json
+{
+  "plansDirectory": "./my-plans"
+}
+```
+
+<Tip>
+  Useful for organizing planning artifacts separately from Claude's internal files, or for keeping plans in a shared team location.
+</Tip>
+
+### Attribution Settings
+
+Customize attribution messages for git commits and pull requests.
+
+<ResponseField name="attribution.commit" type="string" default="Co-authored-by">
+  Git commit attribution (supports trailers)
+</ResponseField>
+
+<ResponseField name="attribution.pr" type="string">
+  Pull request description attribution
+</ResponseField>
+
+<ResponseField name="includeCoAuthoredBy" type="boolean" default={true}>
+  **DEPRECATED** - Use `attribution` instead
+</ResponseField>
+
+**Example:**
+```json
+{
+  "attribution": {
+    "commit": "Generated with AI\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "pr": "Generated with Claude Code"
+  }
+}
+```
+
+<Note>
+  Set to empty string (`""`) to hide attribution entirely.
+</Note>
+
+## Permissions
+
+Control what tools and operations Claude can perform.
+
+### Permission Structure
+
+```json
+{
+  "permissions": {
+    "allow": [],
+    "ask": [],
+    "deny": [],
+    "additionalDirectories": [],
+    "defaultMode": "acceptEdits",
+    "disableBypassPermissionsMode": "disable"
+  }
+}
+```
+
+### Permission Modes
+
+| Mode | Behavior |
+|------|----------|
+| `"default"` | Standard permission checking with prompts |
+| `"acceptEdits"` | Auto-accept file edits without asking |
+| `"askEdits"` | Ask before every operation |
+| `"viewOnly"` | Read-only mode, no modifications |
+| `"bypassPermissions"` | Skip all permission checks (dangerous) |
+| `"plan"` | Read-only exploration mode |
+
+### Tool Permission Syntax
+
+<Tabs>
+  <Tab title="Bash">
+    ```json
+    "Bash(npm run *)"
+    "Bash(* install)"
+    "Bash(git * main)"
+    ```
+    Wildcards can appear at any position
+  </Tab>
+  
+  <Tab title="File Operations">
+    ```json
+    "Read(.env)"
+    "Edit(src/**)"
+    "Write(*.md)"
+    ```
+    Supports glob patterns
+  </Tab>
+  
+  <Tab title="MCP">
+    ```json
+    "mcp__*"
+    "mcp__memory__*"
+    "mcp__github__create_issue"
+    ```
+    Format: `mcp__server__tool`
+  </Tab>
+  
+  <Tab title="Other Tools">
+    ```json
+    "WebFetch(domain:example.com)"
+    "Task(agent-name)"
+    "Skill(skill-name)"
+    ```
+  </Tab>
+</Tabs>
+
+**Example:**
+```json
+{
+  "permissions": {
+    "allow": [
+      "Edit(*)",
+      "Write(*)",
+      "Bash(npm run *)",
+      "Bash(git *)",
+      "WebFetch(domain:*)",
+      "mcp__*"
+    ],
+    "ask": [
+      "Bash(rm *)",
+      "Bash(git push *)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(./secrets/**)",
+      "Bash(curl *)"
+    ],
+    "additionalDirectories": ["../shared-libs/"]
+  }
+}
+```
+
+## Hooks
+
+Execute custom shell commands at various points in Claude Code's lifecycle.
+
+### Hook Events (16 total)
+
+<AccordionGroup>
+  <Accordion title="SessionStart" icon="play">
+    **When:** New or resumed session
+    
+    **Matcher Support:** No
+    
+    **Use Cases:** Load context, set environment
+  </Accordion>
+  
+  <Accordion title="SessionEnd" icon="stop">
+    **When:** Session terminates
+    
+    **Matcher Support:** No
+    
+    **Use Cases:** Cleanup, logging
+  </Accordion>
+  
+  <Accordion title="PreToolUse" icon="circle-chevron-right">
+    **When:** Before tool execution
+    
+    **Matcher Support:** Yes
+    
+    **Use Cases:** Validate commands, modify inputs
+  </Accordion>
+  
+  <Accordion title="PostToolUse" icon="check">
+    **When:** After tool succeeds
+    
+    **Matcher Support:** Yes
+    
+    **Use Cases:** Run linters, verify output
+  </Accordion>
+  
+  <Accordion title="Stop" icon="hand">
+    **When:** Claude finishes responding
+    
+    **Matcher Support:** No
+    
+    **Use Cases:** Block/continue decisions
+  </Accordion>
+  
+  <Accordion title="SubagentStart" icon="robot">
+    **When:** Subagent spawned
+    
+    **Matcher Support:** Yes
+    
+    **Use Cases:** Per-agent setup
+  </Accordion>
+  
+  <Accordion title="SubagentStop" icon="robot">
+    **When:** Subagent completes
+    
+    **Matcher Support:** Yes
+    
+    **Use Cases:** Cleanup, validation
+  </Accordion>
+</AccordionGroup>
+
+### Hook Configuration Structure
+
+```json
+{
+  "hooks": {
+    "EventName": [
+      {
+        "matcher": "ToolPattern",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "script.sh",
+            "timeout": 60000,
+            "once": true
+          }
+        ]
+      }
+    ]
+  },
+  "disableAllHooks": false
+}
+```
+
+### Hook Exit Codes
+
+| Exit Code | Behavior |
+|-----------|----------|
+| `0` | Success, continue |
+| `1` | Error (logged, continues) |
+| `2` | Block the operation |
+
+## MCP Servers
+
+Configure Model Context Protocol servers for extended capabilities.
+
+<ResponseField name="enableAllProjectMcpServers" type="boolean">
+  Auto-approve all `.mcp.json` servers
+</ResponseField>
+
+<ResponseField name="enabledMcpjsonServers" type="array">
+  Allowlist specific server names
+</ResponseField>
+
+<ResponseField name="disabledMcpjsonServers" type="array">
+  Blocklist specific server names
+</ResponseField>
+
+**Example:**
+```json
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["memory", "github", "filesystem"],
+  "disabledMcpjsonServers": ["experimental-server"]
+}
+```
+
+## Sandbox
+
+Configure bash command sandboxing for security.
+
+<ResponseField name="sandbox.enabled" type="boolean" default={false}>
+  Enable bash sandboxing
+</ResponseField>
+
+<ResponseField name="sandbox.autoAllowBashIfSandboxed" type="boolean" default={true}>
+  Auto-approve bash when sandboxed
+</ResponseField>
+
+<ResponseField name="sandbox.excludedCommands" type="array" default={[]}>
+  Commands to run outside sandbox
+</ResponseField>
+
+<ResponseField name="sandbox.network.allowUnixSockets" type="array" default={[]}>
+  Specific Unix socket paths accessible in sandbox
+</ResponseField>
+
+<ResponseField name="sandbox.network.allowLocalBinding" type="boolean" default={false}>
+  Allow binding to localhost ports (macOS)
+</ResponseField>
+
+**Example:**
+```json
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "excludedCommands": ["git", "docker", "gh"],
+    "network": {
+      "allowUnixSockets": ["/var/run/docker.sock"],
+      "allowLocalBinding": true
+    }
+  }
+}
+```
+
+## Model Configuration
+
+### Model Aliases
+
+| Alias | Description |
+|-------|-------------|
+| `"default"` | Recommended for your account type |
+| `"sonnet"` | Latest Sonnet model (Claude Sonnet 4.6) |
+| `"opus"` | Latest Opus model (Claude Opus 4.6) |
+| `"haiku"` | Fast Haiku model |
+| `"sonnet[1m]"` | Sonnet with 1M token context |
+| `"opusplan"` | Opus for planning, Sonnet for execution |
+
+### Effort Level (Opus 4.6)
+
+When Opus 4.6 is selected, the `/model` command exposes an **effort level** control that adjusts how much reasoning the model applies per response.
+
+| Effort Level | Description |
+|-------------|-------------|
+| High (default) | Full reasoning depth, best for complex tasks |
+| Medium | Balanced reasoning, good for everyday tasks |
+| Low | Minimal reasoning, fastest responses |
+
+<Tip>
+  Run `/model` in Claude Code, select **Default (recommended)** — Opus 4.6, then use **← →** arrow keys to adjust the effort level.
+</Tip>
+
+## Display & UX
+
+### Display Settings
+
+<ResponseField name="statusLine" type="object">
+  Custom status line configuration
+</ResponseField>
+
+<ResponseField name="outputStyle" type="string" default="default">
+  Output style (e.g., `"Explanatory"`)
+</ResponseField>
+
+<ResponseField name="spinnerTipsEnabled" type="boolean" default={true}>
+  Show tips while waiting
+</ResponseField>
+
+<ResponseField name="terminalProgressBarEnabled" type="boolean" default={true}>
+  Show progress bar in terminal
+</ResponseField>
+
+<ResponseField name="showTurnDuration" type="boolean" default={true}>
+  Show turn duration messages
+</ResponseField>
+
+<ResponseField name="respectGitignore" type="boolean" default={true}>
+  Respect .gitignore in file picker
+</ResponseField>
+
+**Example:**
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "git branch --show-current"
+  },
+  "spinnerTipsEnabled": true,
+  "terminalProgressBarEnabled": true,
+  "showTurnDuration": false
+}
+```
+
+## Environment Variables (via `env`)
+
+Set environment variables for all Claude Code sessions.
+
+```json
+{
+  "env": {
+    "ANTHROPIC_API_KEY": "...",
+    "NODE_ENV": "development",
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
+  }
+}
+```
+
+### Common Environment Variables
+
+<AccordionGroup>
+  <Accordion title="Authentication" icon="key">
+    - `ANTHROPIC_API_KEY` — API key for authentication
+    - `ANTHROPIC_AUTH_TOKEN` — OAuth token
+    - `ANTHROPIC_BASE_URL` — Custom API endpoint
+  </Accordion>
+  
+  <Accordion title="Cloud Providers" icon="cloud">
+    - `CLAUDE_CODE_USE_BEDROCK` — Use AWS Bedrock (`1` to enable)
+    - `CLAUDE_CODE_USE_VERTEX` — Use Google Vertex AI (`1` to enable)
+    - `CLAUDE_CODE_USE_FOUNDRY` — Use Microsoft Foundry (`1` to enable)
+  </Accordion>
+  
+  <Accordion title="Context & Compaction" icon="compress">
+    - `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` — Auto-compact threshold percentage (1-100). Default is ~95%. Set lower (e.g., `50`) to trigger compaction earlier
+    - `MAX_THINKING_TOKENS` — Limit thinking token budget (set to `0` to disable)
+  </Accordion>
+  
+  <Accordion title="MCP" icon="server">
+    - `MCP_TIMEOUT` — MCP startup timeout in ms (default: 10000)
+    - `MAX_MCP_OUTPUT_TOKENS` — Max MCP output tokens (default: 50000)
+    - `ENABLE_TOOL_SEARCH` — MCP tool search threshold (e.g., `auto:5`)
+  </Accordion>
+</AccordionGroup>
+
+## Useful Commands
+
+<CardGroup cols={3}>
+  <Card title="/model" icon="microchip">
+    Switch models and adjust Opus 4.6 effort level
+  </Card>
+  <Card title="/config" icon="gear">
+    Interactive configuration UI
+  </Card>
+  <Card title="/memory" icon="brain">
+    View/edit all memory files
+  </Card>
+  <Card title="/agents" icon="users">
+    Manage subagents
+  </Card>
+  <Card title="/mcp" icon="server">
+    Manage MCP servers
+  </Card>
+  <Card title="/hooks" icon="link">
+    View configured hooks
+  </Card>
+  <Card title="/plugin" icon="plug">
+    Manage plugins
+  </Card>
+  <Card title="/permissions" icon="shield">
+    View and manage permission rules
+  </Card>
+  <Card title="--doctor" icon="stethoscope">
+    Diagnose configuration issues
+  </Card>
+</CardGroup>
+
+## Sources
+
+<CardGroup cols={2}>
+  <Card title="Settings Documentation" icon="book" href="https://code.claude.com/docs/en/settings">
+    Official Claude Code settings reference
+  </Card>
+  <Card title="Settings JSON Schema" icon="code" href="https://www.schemastore.org/claude-code-settings.json">
+    Complete schema definition
+  </Card>
+  <Card title="Configuration Guide" icon="compass" href="https://claudelog.com/configuration/">
+    ClaudeLog configuration guide
+  </Card>
+  <Card title="GitHub Examples" icon="github" href="https://github.com/feiskyer/claude-code-settings">
+    Community settings examples
+  </Card>
+</CardGroup>

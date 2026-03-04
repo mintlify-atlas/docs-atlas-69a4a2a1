@@ -1,0 +1,477 @@
+---
+title: Subagents
+description: Custom agents with specialized tools, permissions, and models for task execution
+---
+
+## What Are Subagents?
+
+Subagents are custom AI agents with their own configuration, including:
+
+- **Name and color** for visual distinction
+- **Tool allowlist** to control what they can access
+- **Model selection** (haiku, sonnet, opus, or inherit)
+- **Permission mode** for auto-approving actions
+- **Preloaded skills** for domain knowledge
+- **MCP servers** for external integrations
+- **Lifecycle hooks** for events
+
+<Info>
+  Subagents are defined in `.claude/agents/<name>.md` with YAML frontmatter and invoked via the Task tool.
+</Info>
+
+## Why Subagents Matter
+
+Subagents enable specialization and orchestration:
+
+- **Specialized expertise**: Create agents for specific domains (frontend, backend, DevOps)
+- **Tool isolation**: Limit what each agent can do for safety
+- **Parallel execution**: Multiple agents can work on different parts of a codebase
+- **Persistent memory**: Agents remember context across sessions
+- **Progressive disclosure**: Preload skills for focused context
+
+<Warning>
+  Subagents **cannot** invoke other subagents via bash commands. Always use the Task tool.
+</Warning>
+
+## Key Concepts
+
+### Built-in vs Custom Agents
+
+**Built-in agents** (available out-of-the-box):
+
+| Agent | Model | Tools | Use Case |
+|-------|-------|-------|----------|
+| `general-purpose` | inherit | All | Complex multi-step tasks, the default |
+| `Explore` | haiku | Read-only | Fast codebase search and exploration |
+| `Plan` | inherit | Read-only | Pre-planning research before coding |
+| `claude-code-guide` | inherit | Read, WebFetch, WebSearch | Answers Claude Code feature questions |
+
+**Custom agents** (defined by you):
+
+Create agents tailored to your project's needs with specific tools, skills, and behavior.
+
+### Invocation via Task Tool
+
+Always invoke subagents using the Task tool:
+
+```
+Task(subagent_type="agent-name", description="...", prompt="...", model="haiku")
+```
+
+**Never** use bash commands like `claude agent-name` — this won't work.
+
+## Frontmatter Fields
+
+<ParamField path="name" type="string" required>
+  Unique identifier using lowercase letters and hyphens. Used in `Task(subagent_type="name")`.
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  When to invoke this agent. Use `"PROACTIVELY"` for auto-invocation by Claude.
+  
+  Example: `"Use this agent PROACTIVELY for deployment pipelines"`
+</ParamField>
+
+<ParamField path="tools" type="string or list">
+  Comma-separated allowlist of tools. Inherits all tools if omitted.
+  
+  Examples:
+  - `Read, Write, Edit, Bash`
+  - `Task(agent_type)` — Restrict which subagents this agent can spawn
+  - `["Read", "Grep", "Glob"]`
+</ParamField>
+
+<ParamField path="disallowedTools" type="string or list">
+  Tools to deny, removed from inherited or specified list.
+  
+  Example: `NotebookEdit, WebSearch`
+</ParamField>
+
+<ParamField path="model" type="string" default="inherit">
+  Model alias: `haiku`, `sonnet`, `opus`, or `inherit` (uses parent's model).
+</ParamField>
+
+<ParamField path="permissionMode" type="string">
+  Permission mode for this agent:
+  
+  - `default` — Standard permission checking
+  - `acceptEdits` — Auto-accept file edits
+  - `dontAsk` — Bypass most prompts
+  - `bypassPermissions` — Skip all permission checks (dangerous)
+  - `plan` — Read-only planning mode
+</ParamField>
+
+<ParamField path="maxTurns" type="integer">
+  Maximum number of agentic turns before the subagent stops.
+  
+  Example: `25`
+</ParamField>
+
+<ParamField path="skills" type="list">
+  Skill names to preload into agent context at startup. Full skill content is injected, not just made available.
+  
+  Example:
+  ```yaml
+  skills:
+    - deploy-checklist
+    - rollback-procedures
+  ```
+</ParamField>
+
+<ParamField path="mcpServers" type="list">
+  MCP servers for this subagent — server name strings or inline configs.
+  
+  Example:
+  ```yaml
+  mcpServers:
+    - slack
+    - name: pagerduty
+      command: npx
+      args: ["-y", "@pagerduty/mcp-server"]
+  ```
+</ParamField>
+
+<ParamField path="hooks" type="object">
+  Lifecycle hooks scoped to this subagent.
+  
+  Supported events: `PreToolUse`, `PostToolUse`, `PermissionRequest`, `PostToolUseFailure`, `Stop` (converted to `SubagentStop` at runtime), `SubagentStop`
+  
+  <Tip>
+    See the [Hooks concept page](/concepts/hooks) for full details on agent hooks.
+  </Tip>
+</ParamField>
+
+<ParamField path="memory" type="string">
+  Persistent memory scope:
+  
+  - `user` — Stored in `~/.claude/agent-memory/<name>/`, not shared
+  - `project` — Stored in `.claude/agent-memory/<name>/`, committed to git
+  - `local` — Stored in `.claude/agent-memory-local/<name>/`, not committed
+</ParamField>
+
+<ParamField path="background" type="boolean" default="false">
+  Set to `true` to always run as a background task.
+</ParamField>
+
+<ParamField path="isolation" type="string">
+  Set to `"worktree"` to run in a temporary git worktree (auto-cleaned if no changes).
+</ParamField>
+
+<ParamField path="color" type="string">
+  CLI output color for visual distinction.
+  
+  Examples: `green`, `magenta`, `blue`, `teal`
+</ParamField>
+
+## Real Examples
+
+<CodeGroup>
+
+```yaml Minimal Agent
+---
+name: code-reviewer
+description: Reviews code for quality issues
+tools: Read, Grep, Glob
+model: haiku
+---
+
+Review the code for quality issues and report findings.
+```
+
+```yaml Weather Agent (from repository)
+---
+name: weather-agent
+description: Use this agent PROACTIVELY when you need to fetch weather data for Dubai, UAE
+tools: WebFetch, Read, Write, Edit
+model: sonnet
+color: green
+maxTurns: 5
+permissionMode: acceptEdits
+memory: project
+skills:
+  - weather-fetcher
+---
+
+# Weather Agent
+
+You are a specialized weather agent that fetches weather data for Dubai, UAE.
+
+## Your Task
+
+1. Follow the `weather-fetcher` skill instructions to fetch the current temperature
+2. Return the temperature value and unit to the caller
+3. Update your agent memory with the reading details for historical tracking
+
+## Critical Requirements
+
+1. **Use Your Skill**: The skill content is preloaded - follow those instructions
+2. **Return Data**: Your job is to fetch and return the temperature - not to write files
+3. **Unit Preference**: Use whichever unit the caller requests (Celsius or Fahrenheit)
+```
+
+```yaml Full-Featured Agent
+---
+name: deploy-manager
+description: Use this agent PROACTIVELY for deployment pipelines and release management
+tools: Read, Write, Edit, Bash, Grep, Glob, Task(monitor, rollback)
+disallowedTools: NotebookEdit
+model: sonnet
+permissionMode: acceptEdits
+maxTurns: 25
+skills:
+  - deploy-checklist
+  - rollback-procedures
+mcpServers:
+  - slack
+  - name: pagerduty
+    command: npx
+    args: ["-y", "@pagerduty/mcp-server"]
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "./scripts/validate-deploy-command.sh"
+  Stop:
+    - hooks:
+        - type: command
+          command: "./scripts/notify-deploy-complete.sh"
+memory: project
+isolation: worktree
+color: blue
+---
+
+You are a deployment manager. Follow the deploy-checklist skill for
+pre-flight checks and use rollback-procedures if any step fails.
+Notify the team via Slack when deployment completes.
+```
+
+</CodeGroup>
+
+## How to Use Subagents
+
+<Steps>
+  <Step title="Create an agent definition">
+    Create a markdown file in `.claude/agents/` with YAML frontmatter:
+    
+    ```bash
+    mkdir -p .claude/agents
+    touch .claude/agents/my-agent.md
+    ```
+  </Step>
+  
+  <Step title="Define agent configuration">
+    Add frontmatter and instructions:
+    
+    ```yaml
+    ---
+    name: my-agent
+    description: Specialized agent for X
+    tools: Read, Write, Edit
+    model: sonnet
+    ---
+    
+    You are a specialized agent for X.
+    Follow these procedures...
+    ```
+  </Step>
+  
+  <Step title="Invoke from commands or main agent">
+    Use the Task tool to invoke your agent:
+    
+    ```
+    Task(
+      subagent_type="my-agent",
+      description="Do X",
+      prompt="Specific instructions for this invocation"
+    )
+    ```
+  </Step>
+</Steps>
+
+## Agent Skills (Preloaded Knowledge)
+
+Preload skills into agents for focused domain knowledge:
+
+```yaml
+---
+name: weather-agent
+skills:
+  - weather-fetcher  # Preloaded at agent startup
+---
+
+Follow the weather-fetcher skill instructions to fetch temperature.
+```
+
+The `weather-fetcher` skill is injected into the agent's context at startup. The agent sees the full skill content without needing to invoke it separately.
+
+<Tip>
+  **Pattern**: Agent skills (preloaded via `skills:` field) vs Skills (invoked via `Skill` tool). See the [Skills concept page](/concepts/skills) for details.
+</Tip>
+
+## Agent Memory
+
+Agents can persist memory across sessions:
+
+| Scope | Location | Shared | Version Control |
+|-------|----------|--------|----------------|
+| `user` | `~/.claude/agent-memory/<name>/` | No | No |
+| `project` | `.claude/agent-memory/<name>/` | Yes | Yes |
+| `local` | `.claude/agent-memory-local/<name>/` | No | No |
+
+```yaml
+---
+name: weather-agent
+memory: project
+---
+
+Update your agent memory with the reading details for historical tracking.
+```
+
+<CardGroup cols={1}>
+  <Card title="Agent Memory Report" icon="brain" href="/reports/agent-memory">
+    Deep dive into persistent memory scopes and how agents learn across sessions
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Create feature-specific agents">
+    Instead of general "backend-engineer" or "frontend-engineer" agents, create agents for specific features or domains:
+    
+    **Good**: `deploy-manager`, `api-tester`, `database-migrator`
+    
+    **Bad**: `general-engineer`, `code-helper`
+  </Accordion>
+  
+  <Accordion title="Use agents with preloaded skills">
+    Combine agents with skills for progressive disclosure:
+    
+    ```yaml
+    ---
+    name: presentation-curator
+    skills:
+      - presentation-structure
+      - presentation-styling
+      - vibe-to-agentic-framework
+    ---
+    
+    You have three preloaded skills with all the presentation knowledge.
+    ```
+  </Accordion>
+  
+  <Accordion title="Restrict tools appropriately">
+    Only give agents the tools they need:
+    
+    ```yaml
+    # Good: Read-only explorer
+    tools: Read, Grep, Glob
+    
+    # Bad: Unrestricted access
+    # (tools field omitted = inherits all tools)
+    ```
+  </Accordion>
+  
+  <Accordion title="Set appropriate models">
+    - `haiku` for simple, fast operations
+    - `sonnet` for most tasks
+    - `opus` for complex reasoning
+    - `inherit` to use parent's model
+  </Accordion>
+  
+  <Accordion title="Use PROACTIVELY for auto-invocation">
+    Add "PROACTIVELY" to the description so Claude knows to invoke the agent automatically:
+    
+    ```yaml
+    description: Use this agent PROACTIVELY for deployment pipelines
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Scope and Priority
+
+When multiple agents share the same name:
+
+<Steps>
+  <Step title="CLI flag (highest)">
+    `--agents '{...}'` — Session-scoped agents defined via CLI
+  </Step>
+  
+  <Step title="Project">
+    `.claude/agents/` — Project-specific agents, committed to git
+  </Step>
+  
+  <Step title="User">
+    `~/.claude/agents/` — Personal agents across all projects
+  </Step>
+  
+  <Step title="Plugin (lowest)">
+    `<plugin>/agents/` — Agents from installed plugins
+  </Step>
+</Steps>
+
+## Orchestration Patterns
+
+### Command → Agent → Skill
+
+The recommended pattern for complex workflows:
+
+1. **Command** provides the entry point and user interaction
+2. **Agent** executes tasks with preloaded skills
+3. **Skill** creates outputs independently
+
+```yaml
+# Command: /weather-orchestrator
+---
+description: Fetch weather and create SVG card
+---
+
+Step 1: Ask user for Celsius or Fahrenheit
+Step 2: Task(subagent_type="weather-agent", ...)
+Step 3: Skill(skill="weather-svg-creator")
+```
+
+```yaml
+# Agent: weather-agent
+---
+name: weather-agent
+skills:
+  - weather-fetcher  # Preloaded
+---
+
+Follow weather-fetcher skill to fetch temperature.
+```
+
+<CardGroup cols={1}>
+  <Card title="Orchestration Workflow" icon="diagram-project" href="/workflows/orchestration-workflow">
+    See the complete Command → Agent → Skill pattern with diagrams
+  </Card>
+</CardGroup>
+
+## Cross-Links
+
+<CardGroup cols={2}>
+  <Card title="Commands" icon="terminal" href="/concepts/commands">
+    Learn how commands orchestrate agents
+  </Card>
+  
+  <Card title="Skills" icon="book-open" href="/concepts/skills">
+    Preload skills into agents for domain knowledge
+  </Card>
+  
+  <Card title="Hooks" icon="webhook" href="/concepts/hooks">
+    Add lifecycle hooks to agents
+  </Card>
+  
+  <Card title="Subagents Best Practice" icon="star" href="/best-practices/subagents">
+    Complete frontmatter reference and built-in agents
+  </Card>
+</CardGroup>
+
+## Further Reading
+
+- [Create Custom Subagents — Claude Code Docs](https://code.claude.com/docs/en/sub-agents)
+- [Agent Teams Workflow](/workflows/agent-teams)
+- [Subagents Implementation Examples](/examples/subagents-implementation)
+- [Agent Memory Report](/reports/agent-memory)

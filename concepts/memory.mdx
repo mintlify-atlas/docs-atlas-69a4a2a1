@@ -1,0 +1,457 @@
+---
+title: Memory
+description: Persistent context via CLAUDE.md files with ancestor and descendant loading
+---
+
+## What Is Memory?
+
+Memory in Claude Code is persistent context stored in `CLAUDE.md` files:
+
+- **Project guidance** (conventions, architecture, standards)
+- **Domain knowledge** (how the codebase works)
+- **Workflow instructions** (testing, deployment, debugging)
+- **Rules and constraints** (what to avoid, preferred patterns)
+
+CLAUDE.md files are automatically loaded into context, providing Claude with project-specific knowledge without manual prompting.
+
+<Info>
+  Memory files use markdown format and are named `CLAUDE.md` (or `CLAUDE.local.md` for personal overrides).
+</Info>
+
+## Why Memory Matters
+
+Memory enables:
+
+- **Consistent behavior**: Claude follows project conventions automatically
+- **Reduced repetition**: No need to re-explain architecture every session
+- **Team alignment**: Shared context in version control
+- **Monorepo support**: Component-specific instructions load on-demand
+- **Personal customization**: Local overrides for individual preferences
+
+<Warning>
+  Keep CLAUDE.md under **150 lines** for reliable adherence. Claude's attention to instructions degrades with longer files.
+</Warning>
+
+## Memory Scopes
+
+Claude Code loads CLAUDE.md files from three scopes:
+
+<CardGroup cols={3}>
+  <Card title="Global" icon="globe">
+    **Location**: `~/.claude/CLAUDE.md`
+    
+    **Scope**: All Claude Code sessions
+    
+    **Use for**: Personal preferences, coding style
+  </Card>
+  
+  <Card title="Project" icon="folder">
+    **Location**: `<project>/CLAUDE.md`
+    
+    **Scope**: This project only
+    
+    **Use for**: Team-shared conventions, architecture
+  </Card>
+  
+  <Card title="Local" icon="user">
+    **Location**: `<project>/CLAUDE.local.md`
+    
+    **Scope**: This project, you only (git-ignored)
+    
+    **Use for**: Personal overrides for this project
+  </Card>
+</CardGroup>
+
+## Loading Behavior
+
+Claude Code uses two mechanisms for loading CLAUDE.md files:
+
+### Ancestor Loading (UP)
+
+When you start Claude Code, it walks **upward** from your current directory to the filesystem root and loads every CLAUDE.md it finds.
+
+**Loaded at startup**: All ancestor CLAUDE.md files
+
+```
+/
+└── home/
+    └── user/
+        ├── CLAUDE.md           ✓ Loaded at startup
+        └── mymonorepo/
+            ├── CLAUDE.md       ✓ Loaded at startup (current dir)
+            ├── frontend/
+            │   └── CLAUDE.md   ✗ Not loaded yet
+            └── backend/
+                └── CLAUDE.md   ✗ Not loaded yet
+```
+
+### Descendant Loading (DOWN)
+
+CLAUDE.md files in subdirectories below your current directory are **NOT loaded at startup**. They're loaded lazily when you read/edit files in those subdirectories.
+
+**Loaded on-demand**: Only when working in that subdirectory
+
+<Tabs>
+  <Tab title="Scenario 1: Root Directory">
+    **Working directory**: `/mymonorepo/`
+    
+    ```bash
+    cd /mymonorepo
+    claude
+    ```
+    
+    | File | Loaded at Launch? | Reason |
+    |------|-------------------|--------|
+    | `/mymonorepo/CLAUDE.md` | ✓ Yes | Current working directory |
+    | `/mymonorepo/frontend/CLAUDE.md` | ✗ No | Loaded when you work in `frontend/` |
+    | `/mymonorepo/backend/CLAUDE.md` | ✗ No | Loaded when you work in `backend/` |
+    | `/mymonorepo/api/CLAUDE.md` | ✗ No | Loaded when you work in `api/` |
+  </Tab>
+  
+  <Tab title="Scenario 2: Component Directory">
+    **Working directory**: `/mymonorepo/frontend/`
+    
+    ```bash
+    cd /mymonorepo/frontend
+    claude
+    ```
+    
+    | File | Loaded at Launch? | Reason |
+    |------|-------------------|--------|
+    | `/mymonorepo/CLAUDE.md` | ✓ Yes | Ancestor directory |
+    | `/mymonorepo/frontend/CLAUDE.md` | ✓ Yes | Current working directory |
+    | `/mymonorepo/backend/CLAUDE.md` | ✗ No | Sibling directory |
+    | `/mymonorepo/api/CLAUDE.md` | ✗ No | Sibling directory |
+  </Tab>
+</Tabs>
+
+<Tip>
+  **Key insight**: Ancestors always load at startup. Descendants load lazily. Siblings never load.
+</Tip>
+
+## Why This Design Works
+
+<AccordionGroup>
+  <Accordion title="Shared instructions propagate down">
+    Root-level CLAUDE.md contains repository-wide conventions, coding standards, and common patterns that apply everywhere.
+  </Accordion>
+  
+  <Accordion title="Component-specific instructions stay isolated">
+    Frontend developers don't need backend-specific instructions cluttering their context, and vice versa.
+  </Accordion>
+  
+  <Accordion title="Context is optimized">
+    By lazily loading descendant CLAUDE.md files, Claude Code avoids loading potentially hundreds of kilobytes of irrelevant instructions at startup.
+  </Accordion>
+</AccordionGroup>
+
+## Writing a Good CLAUDE.md
+
+<Steps>
+  <Step title="Keep it under 150 lines">
+    > "CLAUDE.md should not exceed 150+ lines." — [Best Practice Repo](https://github.com/shanraisshan/claude-code-best-practice)
+    
+    Claude's adherence degrades with longer files. For large projects, use multiple CLAUDE.md files in subdirectories.
+  </Step>
+  
+  <Step title="Structure clearly">
+    Use clear sections:
+    
+    ```markdown
+    # Project Name
+    
+    ## Overview
+    Brief description of the project.
+    
+    ## Architecture
+    Key components and how they interact.
+    
+    ## Conventions
+    - File naming: camelCase
+    - Testing: Jest for unit, Playwright for E2E
+    - Commits: Conventional Commits
+    
+    ## Workflows
+    - Testing: `npm test`
+    - Deployment: `npm run deploy:staging`
+    
+    ## Critical Patterns
+    - Always use TypeScript
+    - Never commit .env files
+    ```
+  </Step>
+  
+  <Step title="Be specific and actionable">
+    **Good**:
+    ```markdown
+    ## Testing
+    - Run `npm test` before committing
+    - E2E tests must pass in CI
+    - Coverage threshold: 80%
+    ```
+    
+    **Bad**:
+    ```markdown
+    ## Testing
+    Write tests.
+    ```
+  </Step>
+  
+  <Step title="Document critical paths">
+    Focus on what Claude needs to know:
+    
+    - Where files live
+    - How to run/test/deploy
+    - What to avoid
+    - Team conventions
+  </Step>
+</Steps>
+
+<CardGroup cols={1}>
+  <Card title="Humanlayer Guide" icon="book" href="https://www.humanlayer.dev/blog/writing-a-good-claude-md">
+    Comprehensive guide to writing effective CLAUDE.md files (60 lines recommended)
+  </Card>
+</CardGroup>
+
+## Real Example from Repository
+
+From `CLAUDE.md` in the best practice repository:
+
+```markdown
+# CLAUDE.md
+
+This file provides guidance to Claude Code when working with this repository.
+
+## Repository Overview
+
+This is a best practices repository for Claude Code configuration, demonstrating
+patterns for skills, subagents, hooks, and commands.
+
+## Key Components
+
+### Weather System (Example Workflow)
+A demonstration of Command → Agent → Skill architecture:
+- `/weather-orchestrator` command: Entry point
+- `weather-agent`: Fetches temperature using preloaded `weather-fetcher` skill
+- `weather-svg-creator` skill: Creates SVG weather card
+
+### Skill Definition Structure
+Skills in `.claude/skills/<name>/SKILL.md` use YAML frontmatter:
+- `name`: Display name and slash command
+- `description`: When to invoke
+- `user-invocable`: Set false to hide from menu
+
+### Subagent Orchestration
+Subagents cannot invoke other subagents via bash commands. Use the Task tool:
+```
+Task(subagent_type="agent-name", description="...", prompt="...")
+```
+
+## Critical Patterns
+
+- Keep CLAUDE.md under 150 lines for reliable adherence
+- Use commands for workflows instead of standalone agents
+- Create feature-specific subagents with skills (progressive disclosure)
+- Perform manual `/compact` at ~50% context usage
+
+## Workflow Best Practices
+
+- Start with plan mode for complex tasks
+- Use human-gated task list workflow for multi-step tasks
+- Break subtasks small enough to complete in under 50% context
+```
+
+## Monorepo Structure Example
+
+```
+/mymonorepo/
+├── CLAUDE.md          # Root: Shared conventions
+├── frontend/
+│   └── CLAUDE.md      # Frontend-specific instructions
+├── backend/
+│   └── CLAUDE.md      # Backend-specific instructions
+└── api/
+    └── CLAUDE.md      # API-specific instructions
+```
+
+**Root CLAUDE.md** (shared across all components):
+
+```markdown
+# MyMonorepo
+
+## Conventions
+- TypeScript for all code
+- Conventional Commits
+- Prettier for formatting
+
+## Testing
+- Run `npm test` in component directories
+- E2E tests in `/e2e`
+
+## Deployment
+- Staging: `npm run deploy:staging`
+- Production: `npm run deploy:prod`
+```
+
+**Frontend CLAUDE.md** (loaded when working in `frontend/`):
+
+```markdown
+# Frontend
+
+## Stack
+- React 18 + TypeScript
+- Vite for builds
+- React Router for routing
+
+## Structure
+- `/src/components` — Reusable components
+- `/src/pages` — Page components
+- `/src/hooks` — Custom hooks
+
+## Commands
+- Dev: `npm run dev`
+- Build: `npm run build`
+- Test: `npm test`
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Put shared conventions in root CLAUDE.md">
+    Coding standards, commit message formats, PR templates, and repository-wide guidelines.
+  </Accordion>
+  
+  <Accordion title="Put component-specific instructions in component CLAUDE.md">
+    Framework-specific patterns, component architecture, testing conventions unique to that component.
+  </Accordion>
+  
+  <Accordion title="Use CLAUDE.local.md for personal preferences">
+    Add it to `.gitignore` for instructions that shouldn't be shared with the team.
+    
+    ```bash
+    echo "CLAUDE.local.md" >> .gitignore
+    ```
+  </Accordion>
+  
+  <Accordion title="Don't use CLAUDE.md as a TODO list">
+    CLAUDE.md is for persistent knowledge, not ephemeral tasks. Use `/todos` or a task management system instead.
+  </Accordion>
+  
+  <Accordion title="Use @path imports for large contexts">
+    Instead of pasting large code blocks, reference files:
+    
+    ```markdown
+    ## Architecture
+    See @docs/architecture.md for full details.
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Memory vs Rules
+
+Claude Code also supports a `CLAUDE.rules` file for organizing rules separately:
+
+**CLAUDE.md** (broad context):
+```markdown
+# Project Overview
+
+This is a web application built with React and Node.js.
+```
+
+**CLAUDE.rules** (specific constraints):
+```markdown
+# Rules
+
+- Never commit .env files
+- Always use TypeScript
+- Run tests before pushing
+- Use Conventional Commits
+```
+
+<Info>
+  Both files are loaded into context. Use `CLAUDE.rules` to separate constraints from general guidance.
+</Info>
+
+## Managing Memory
+
+<Tabs>
+  <Tab title="View Memory">
+    ```bash
+    claude
+    /memory
+    ```
+    
+    View and edit all memory files (user, project, and local scope).
+  </Tab>
+  
+  <Tab title="Manual Memory Updates">
+    Edit CLAUDE.md files directly:
+    
+    ```bash
+    vim .claude/CLAUDE.md
+    ```
+    
+    Changes take effect in new sessions.
+  </Tab>
+  
+  <Tab title="Auto Memory (Experimental)">
+    Claude Code can automatically update CLAUDE.md based on patterns it learns.
+    
+    Enable via:
+    ```bash
+    /memory
+    # Enable auto-memory
+    ```
+  </Tab>
+</Tabs>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Claude isn't following CLAUDE.md">
+    - Check file size — keep under 150 lines
+    - Use clear, imperative language
+    - Add "Critical:" or "Important:" prefixes
+    - Repeat critical instructions in multiple sections
+    - Try `/memory` to verify file is loaded
+  </Accordion>
+  
+  <Accordion title="CLAUDE.md not loading">
+    - Ensure file is named exactly `CLAUDE.md` (case-sensitive)
+    - Check file is in project root or ancestor directory
+    - Restart Claude Code if you just created it
+  </Accordion>
+  
+  <Accordion title="Too much context loaded">
+    - Split into multiple CLAUDE.md files in subdirectories
+    - Use CLAUDE.local.md for personal preferences (git-ignored)
+    - Remove outdated or unused sections
+  </Accordion>
+</AccordionGroup>
+
+## Cross-Links
+
+<CardGroup cols={2}>
+  <Card title="Settings" icon="gear" href="/concepts/settings">
+    Configure memory-related settings
+  </Card>
+  
+  <Card title="Subagents" icon="robot" href="/concepts/subagents">
+    Agents can have persistent memory too
+  </Card>
+  
+  <Card title="Memory Best Practice" icon="star" href="/best-practices/memory">
+    Writing good CLAUDE.md files and monorepo patterns
+  </Card>
+  
+  <Card title="Agent Memory Report" icon="brain" href="/reports/agent-memory">
+    Persistent memory scopes for subagents
+  </Card>
+</CardGroup>
+
+## Further Reading
+
+- [Claude Code Memory — Docs](https://code.claude.com/docs/en/memory)
+- [How Claude Looks Up Memories](https://code.claude.com/docs/en/memory#how-claude-looks-up-memories)
+- [Humanlayer — Writing a good CLAUDE.md](https://www.humanlayer.dev/blog/writing-a-good-claude-md)
+- [Boris Cherny on CLAUDE.md Loading](https://x.com/bcherny/status/2016339448863355206)

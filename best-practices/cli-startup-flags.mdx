@@ -1,0 +1,359 @@
+---
+title: CLI Startup Flags Best Practice
+description: Complete reference of all available command-line flags, subcommands, and environment variables when launching Claude Code from the terminal
+icon: flag
+---
+
+<Info>
+  **Last Updated:** March 02, 2026
+</Info>
+
+Complete reference of all available command-line flags, subcommands, and environment variables when launching Claude Code from the terminal.
+
+## Session Management
+
+<ParamField path="--continue" type="flag" default="-c">
+  Continue the most recent conversation in the current directory
+</ParamField>
+
+<ParamField path="--resume" type="flag" default="-r">
+  Resume a specific session by ID or name, or show interactive picker
+</ParamField>
+
+<ParamField path="--from-pr" type="string">
+  Resume sessions linked to a specific GitHub PR (accepts NUMBER or URL)
+</ParamField>
+
+<ParamField path="--fork-session" type="flag">
+  Create a new session ID when resuming (use with `--resume` or `--continue`)
+</ParamField>
+
+<ParamField path="--session-id" type="string">
+  Use a specific session ID (must be valid UUID)
+</ParamField>
+
+<ParamField path="--no-session-persistence" type="flag">
+  Disable session persistence (print mode only)
+</ParamField>
+
+<ParamField path="--remote" type="flag">
+  Create a new web session on claude.ai
+</ParamField>
+
+<ParamField path="--teleport" type="flag">
+  Resume a web session in your local terminal
+</ParamField>
+
+## Model & Configuration
+
+<ParamField path="--model" type="string">
+  Set model with alias (`sonnet`, `opus`, `haiku`) or full model ID
+</ParamField>
+
+<ParamField path="--fallback-model" type="string">
+  Auto-fallback model when default is overloaded (print mode only)
+</ParamField>
+
+<ParamField path="--betas" type="string">
+  Beta headers to include in API requests (API key users only)
+</ParamField>
+
+## Permissions & Security
+
+<ParamField path="--dangerously-skip-permissions" type="flag">
+  Skip ALL permission prompts. Use with extreme caution
+</ParamField>
+
+<Warning>
+  `--dangerously-skip-permissions` bypasses all safety checks. Only use in trusted, isolated environments.
+</Warning>
+
+<ParamField path="--allow-dangerously-skip-permissions" type="flag">
+  Enable permission bypassing as an option without activating it
+</ParamField>
+
+<ParamField path="--permission-mode" type="string">
+  Begin in specified permission mode: `default`, `plan`, `acceptEdits`, `bypassPermissions`
+</ParamField>
+
+<ParamField path="--allowedTools" type="string">
+  Tools that execute without prompting (permission rule syntax)
+</ParamField>
+
+<ParamField path="--disallowedTools" type="string">
+  Tools removed from model context entirely
+</ParamField>
+
+<ParamField path="--tools" type="string">
+  Restrict which built-in tools Claude can use (use `""` to disable all)
+</ParamField>
+
+<ParamField path="--permission-prompt-tool" type="string">
+  Specify MCP tool to handle permission prompts in non-interactive mode
+</ParamField>
+
+## Output & Format
+
+<ParamField path="--print" type="flag" default="-p">
+  Print response without interactive mode (headless/SDK mode)
+</ParamField>
+
+<ParamField path="--output-format" type="string">
+  Output format: `text`, `json`, `stream-json`
+</ParamField>
+
+<ParamField path="--input-format" type="string">
+  Input format: `text`, `stream-json`
+</ParamField>
+
+<ParamField path="--json-schema" type="string">
+  Get validated JSON matching schema (print mode only)
+</ParamField>
+
+<ParamField path="--include-partial-messages" type="flag">
+  Include partial streaming events (requires `--print` and `--output-format=stream-json`)
+</ParamField>
+
+<ParamField path="--verbose" type="flag">
+  Enable verbose logging with full turn-by-turn output
+</ParamField>
+
+## System Prompt
+
+<ParamField path="--system-prompt" type="string">
+  Replace entire system prompt with custom text
+</ParamField>
+
+<ParamField path="--system-prompt-file" type="string">
+  Load system prompt from file, replacing default (print mode only)
+</ParamField>
+
+<ParamField path="--append-system-prompt" type="string">
+  Append custom text to default system prompt
+</ParamField>
+
+<ParamField path="--append-system-prompt-file" type="string">
+  Append file contents to default prompt (print mode only)
+</ParamField>
+
+## Agent & Subagent
+
+<ParamField path="--agent" type="string">
+  Specify an agent for the current session
+</ParamField>
+
+<ParamField path="--agents" type="json">
+  Define custom subagents dynamically via JSON
+</ParamField>
+
+<ParamField path="--teammate-mode" type="string">
+  Set agent team display: `auto`, `in-process`, `tmux`
+</ParamField>
+
+## MCP & Plugins
+
+<ParamField path="--mcp-config" type="string">
+  Load MCP servers from JSON file or string
+</ParamField>
+
+<ParamField path="--strict-mcp-config" type="flag">
+  Only use MCP servers from `--mcp-config`, ignore all others
+</ParamField>
+
+<ParamField path="--plugin-dir" type="string">
+  Load plugins from directory for this session only (repeatable)
+</ParamField>
+
+## Directory & Workspace
+
+<ParamField path="--add-dir" type="string">
+  Add additional working directories for Claude to access
+</ParamField>
+
+<ParamField path="--worktree" type="flag" default="-w">
+  Start Claude in an isolated git worktree (branched from HEAD)
+</ParamField>
+
+## Budget & Limits
+
+<ParamField path="--max-budget-usd" type="number">
+  Maximum dollar amount for API calls before stopping (print mode only)
+</ParamField>
+
+<ParamField path="--max-turns" type="number">
+  Limit number of agentic turns (print mode only)
+</ParamField>
+
+## Integration
+
+<ParamField path="--chrome" type="flag">
+  Enable Chrome browser integration for web automation
+</ParamField>
+
+<ParamField path="--no-chrome" type="flag">
+  Disable Chrome browser integration for this session
+</ParamField>
+
+<ParamField path="--ide" type="flag">
+  Automatically connect to IDE on startup if exactly one valid IDE available
+</ParamField>
+
+## Initialization & Maintenance
+
+<ParamField path="--init" type="flag">
+  Run initialization hooks and start interactive mode
+</ParamField>
+
+<ParamField path="--init-only" type="flag">
+  Run initialization hooks and exit (no interactive session)
+</ParamField>
+
+<ParamField path="--maintenance" type="flag">
+  Run maintenance hooks and exit
+</ParamField>
+
+## Debug & Diagnostics
+
+<ParamField path="--debug" type="string">
+  Enable debug mode with optional category filtering (e.g., `"api,hooks"`)
+</ParamField>
+
+<Tip>
+  Use `--debug` to troubleshoot hook execution, API calls, and internal behavior. Add category filters to focus output.
+</Tip>
+
+## Settings Override
+
+<ParamField path="--settings" type="string">
+  Path to settings JSON file or JSON string to load
+</ParamField>
+
+<ParamField path="--setting-sources" type="string">
+  Comma-separated list of sources to load: `user`, `project`, `local`
+</ParamField>
+
+<ParamField path="--disable-slash-commands" type="flag">
+  Disable all skills and slash commands for this session
+</ParamField>
+
+## Version & Help
+
+<ParamField path="--version" type="flag" default="-v">
+  Output the version number
+</ParamField>
+
+<ParamField path="--help" type="flag" default="-h">
+  Show help information
+</ParamField>
+
+## Subcommands
+
+These are not flags but top-level subcommands run as `claude <subcommand>`:
+
+<CodeGroup>
+```bash Interactive REPL
+claude
+```
+
+```bash REPL with Initial Prompt
+claude "query"
+```
+
+```bash Update to Latest
+claude update
+```
+
+```bash Configure MCP
+claude mcp add <server>
+claude mcp list
+```
+
+```bash Run Diagnostics
+claude doctor
+```
+</CodeGroup>
+
+## Environment Variables
+
+These environment variables modify Claude Code behavior at startup:
+
+<AccordionGroup>
+  <Accordion title="Experimental Features" icon="flask">
+    - `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` — Enable experimental agent teams
+    - `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1` — Disable experimental beta features
+  </Accordion>
+  
+  <Accordion title="Performance & Optimization" icon="gauge">
+    - `CLAUDE_CODE_TMPDIR` — Override temp directory for internal files
+    - `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` — Disable background task functionality
+    - `USE_BUILTIN_RIPGREP=0` — Use system ripgrep instead of built-in (Alpine Linux)
+  </Accordion>
+  
+  <Accordion title="Model Configuration" icon="microchip">
+    - `MAX_THINKING_TOKENS` — Limit thinking token budget (set to `0` to disable)
+    - `CLAUDE_CODE_EFFORT_LEVEL` — Control thinking depth: `low`, `medium`, `high`
+    - `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` — Auto-compact threshold percentage
+  </Accordion>
+  
+  <Accordion title="System Behavior" icon="gear">
+    - `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1` — Enable additional directory CLAUDE.md loading
+    - `DISABLE_AUTOUPDATER=1` — Disable auto-updates
+    - `CLAUDE_CODE_ENABLE_TASKS=false` — Disable new task management system, revert to old todos
+    - `CLAUDE_CODE_SHELL` — Override automatic shell detection
+    - `CLAUDE_BASH_NO_LOGIN=1` — Skip login shell for BashTool
+  </Accordion>
+  
+  <Accordion title="File & Output" icon="file">
+    - `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS` — Override default file read token limit
+    - `CLAUDE_CODE_EXIT_AFTER_STOP_DELAY` — Auto-exit SDK mode after idle duration (ms)
+  </Accordion>
+  
+  <Accordion title="Simple Mode" icon="sliders">
+    - `CLAUDE_CODE_SIMPLE` — Enable simple mode (Bash + Edit tools only)
+  </Accordion>
+</AccordionGroup>
+
+## Usage Examples
+
+<CodeGroup>
+```bash Continue Last Session
+claude --continue
+```
+
+```bash Headless Mode with JSON Output
+claude --print "Analyze this code" --output-format json
+```
+
+```bash Custom Model with Permission Mode
+claude --model opus --permission-mode plan
+```
+
+```bash Isolated Worktree
+claude --worktree
+```
+
+```bash Custom Agent with Debug
+claude --agent code-reviewer --debug "hooks,api"
+```
+
+```bash Budget Limited Session
+claude --print "task" --max-budget-usd 5.00 --max-turns 10
+```
+</CodeGroup>
+
+## Sources
+
+<CardGroup cols={2}>
+  <Card title="CLI Reference" icon="book" href="https://code.claude.com/docs/en/cli-reference">
+    Official CLI documentation
+  </Card>
+  <Card title="Headless Mode" icon="terminal" href="https://code.claude.com/docs/en/headless">
+    Guide to non-interactive usage
+  </Card>
+  <Card title="Setup Guide" icon="wrench" href="https://code.claude.com/docs/en/setup">
+    Installation and configuration
+  </Card>
+  <Card title="CHANGELOG" icon="clock-rotate-left" href="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md">
+    Latest updates and features
+  </Card>
+</CardGroup>

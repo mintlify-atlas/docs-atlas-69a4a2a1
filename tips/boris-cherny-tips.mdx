@@ -1,0 +1,195 @@
+---
+title: Boris Cherny's Customization Tips
+description: 12 ways to customize Claude Code from the creator himself
+---
+
+A summary of customization tips shared by Boris Cherny ([@bcherny](https://x.com/bcherny)), creator of Claude Code, on February 12, 2026.
+
+<Note>
+Boris highlighted that customizability is one of the things engineers love most about Claude Code — hooks, plugins, LSPs, MCPs, skills, effort levels, custom agents, status lines, output styles, and more.
+
+**Source:** [Tweet from February 12, 2026](https://x.com/bcherny/status/2021699851499798911)
+</Note>
+
+## 1. Configure Your Terminal
+
+Set up your terminal for the best Claude Code experience:
+
+- **Theme**: Run `/config` to set light/dark mode
+- **Notifications**: Enable notifications for iTerm2, or use a custom notification hook
+- **Newlines**: If using Claude Code in an IDE terminal, Apple Terminal, Warp, or Alacritty, run `/terminal-setup` to enable shift+enter for newlines (so you don't need to type `\`)
+- **Vim mode**: Run `/vim`
+
+<Tip>
+Run `/terminal-setup` once to configure newline handling for your specific terminal emulator.
+</Tip>
+
+## 2. Adjust Effort Level
+
+Run `/model` to pick your preferred effort level:
+
+- **Low** — fewer tokens, faster responses
+- **Medium** — balanced behavior
+- **High** — more tokens, more intelligence
+
+<Tip>
+Boris's preference: **High** for everything.
+</Tip>
+
+## 3. Install Plugins, MCPs, and Skills
+
+Plugins let you install LSPs (available for every major language), MCPs, skills, agents, and custom hooks.
+
+<Tip>
+Install from the official Anthropic plugin marketplace, or create your own marketplace for your company. Check the `settings.json` into your codebase to auto-add the marketplaces for your team.
+</Tip>
+
+Run `/plugin` to get started.
+
+<Note>
+See [Plugin Discovery](https://code.claude.com/docs/en/discover-plugins) for available marketplaces.
+</Note>
+
+## 4. Create Custom Agents
+
+Drop `.md` files in `.claude/agents` to create custom agents. Each agent can have:
+
+- Custom name and color
+- Custom tool set
+- Pre-allowed and pre-disallowed tools
+- Permission mode
+- Model selection
+
+<Tip>
+You can set the default agent for the main conversation using the `"agent"` field in `settings.json` or the `--agent` flag.
+</Tip>
+
+Run `/agents` to get started.
+
+## 5. Pre-approve Common Permissions
+
+Claude Code uses a permission system combining prompt injection detection, static analysis, sandboxing, and human oversight.
+
+<Tip>
+Out of the box, a small set of safe commands are pre-approved. To pre-approve more, run `/permissions` and add to the allow and block lists. Check these into your team's `settings.json`.
+</Tip>
+
+Full wildcard syntax is supported:
+- `Bash(bun run *)`
+- `Edit(/docs/**)`
+
+## 6. Enable Sandboxing
+
+Opt into Claude Code's open source sandbox runtime to improve safety while reducing permission prompts.
+
+<Tip>
+Run `/sandbox` to enable it. Sandboxing runs on your machine and supports both file and network isolation.
+</Tip>
+
+## 7. Add a Status Line
+
+Custom status lines show up right below the composer, displaying model, directory, remaining context, cost, and anything else you want to see while you work.
+
+<Tip>
+Every team member can have a different status line. Use `/statusline` to have Claude generate one based on your `.bashrc`/`.zshrc`.
+</Tip>
+
+Example information displayed:
+- Current model and effort level
+- Working directory
+- Remaining context percentage
+- Session cost
+- Git branch
+
+## 8. Customize Your Keybindings
+
+Every key binding in Claude Code is customizable.
+
+<Tip>
+Run `/keybindings` to re-map any key. Settings live reload so you can see how it feels immediately.
+</Tip>
+
+## 9. Set Up Hooks
+
+Hooks let you deterministically hook into Claude's lifecycle:
+
+- Automatically route permission requests to Slack or Opus
+- Nudge Claude to keep going when it reaches the end of a turn (you can even kick off an agent or use a prompt to decide whether Claude should keep going)
+- Pre-process or post-process tool calls, e.g., to add your own logging
+
+<Tip>
+Ask Claude to add a hook to get started. Hooks are scripts that run outside the agentic loop on specific events.
+</Tip>
+
+<Note>
+See [Hooks Documentation](https://code.claude.com/docs/en/hooks) for available hook events and examples.
+</Note>
+
+## 10. Customize Your Spinner Verbs
+
+Customize your spinner verbs to add or replace the default list with your own verbs.
+
+<Tip>
+Check the `settings.json` into source control to share verbs with your team.
+</Tip>
+
+Example configuration:
+
+```json
+{
+  "spinnerVerbs": [
+    "architecting",
+    "refactoring",
+    "optimizing",
+    "deploying"
+  ]
+}
+```
+
+## 11. Use Output Styles
+
+Run `/config` and set an output style to have Claude respond using a different tone or format.
+
+- **Explanatory** — recommended when getting familiar with a new codebase, to have Claude explain frameworks and code patterns as it works
+- **Learning** — to have Claude coach you through making code changes
+- **Custom** — create custom output styles to adjust Claude's voice
+
+<Tip>
+Use **Explanatory** mode when onboarding to a new codebase to learn as you work.
+</Tip>
+
+## 12. Customize All the Things!
+
+Claude Code works great out of the box, but when you do customize, check your `settings.json` into git so your team can benefit too.
+
+<Note>
+Configuration is supported at multiple levels:
+- For your codebase
+- For a sub-folder
+- For just yourself (`.claude/settings.local.json`)
+- Via enterprise-wide policies
+</Note>
+
+<Tip>
+With 37 settings and 84 environment variables (use the `"env"` field in your `settings.json` to avoid wrapper scripts), there's a good chance any behavior you want is configurable.
+</Tip>
+
+## Additional Resources
+
+- [Claude Code Terminal Setup](https://code.claude.com/docs/en/terminal)
+- [Claude Code Plugins & Discovery](https://code.claude.com/docs/en/discover-plugins)
+- [Claude Code Sub-agents](https://code.claude.com/docs/en/sub-agents)
+- [Claude Code Permissions](https://code.claude.com/docs/en/permissions)
+- [Claude Code Sandbox](https://code.claude.com/docs/en/sandbox)
+- [Claude Code Status Line](https://code.claude.com/docs/en/statusline)
+- [Claude Code Keyboard Shortcuts](https://code.claude.com/docs/en/keybindings)
+- [Claude Code Hooks Reference](https://code.claude.com/docs/en/hooks)
+- [Claude Code Output Styles](https://code.claude.com/docs/en/output-styles)
+- [Claude Code Settings](https://code.claude.com/docs/en/settings)
+
+## More from Boris Cherny
+
+- [Boris setup - 5 tips | 03/Jan/26](https://x.com/bcherny/status/2007179832300581177)
+- [10 tips for using Claude Code | 01/Feb/26](https://x.com/bcherny/status/2017742741636321619)
+- [Git Worktrees - 5 ways | 21/Feb/26](https://x.com/bcherny/status/2025007393290272904)
+- [Seeing like an Agent - lessons from building Claude Code (Thariq) | 28/Feb/26](https://x.com/trq212/status/2027463795355095314)

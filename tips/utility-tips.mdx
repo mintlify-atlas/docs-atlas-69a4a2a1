@@ -1,0 +1,129 @@
+---
+title: Utility Tips
+description: Essential utilities and tools to enhance your Claude Code experience
+---
+
+## Terminal Setup
+
+### iTerm2 for macOS
+
+<Tip>
+Use [iTerm2](https://iterm2.com/) terminal instead of IDE terminals to avoid crash issues.
+</Tip>
+
+iTerm2 provides:
+- Better stability for long-running Claude sessions
+- Native notification support
+- Superior terminal emulation
+
+## Voice Input
+
+### Wispr Flow
+
+<Tip>
+Use [Wispr Flow](https://wisprflow.ai) for voice prompting to achieve 10x productivity improvement.
+</Tip>
+
+<Note>
+Claude Code now has built-in [Voice Mode](https://x.com/trq212/status/2028628570692890800). Use `/voice` to activate it.
+</Note>
+
+### Voice Feedback Hooks
+
+<Tip>
+Install [claude-code-voice-hooks](https://github.com/shanraisshan/claude-code-voice-hooks) for audio feedback during Claude operations.
+</Tip>
+
+These hooks provide:
+- Audio notifications for tool use
+- Git commit confirmations
+- Session start/stop sounds
+- Custom team or personal sound preferences
+
+## Status Line
+
+<Tip>
+Configure a [status line](https://github.com/shanraisshan/claude-code-status-line) for context awareness and fast compacting.
+</Tip>
+
+The status line shows:
+- Current model and effort level
+- Context usage percentage
+- Session cost
+- Current directory
+- Custom information from your shell config
+
+<Note>
+Use `/statusline` to have Claude generate a status line based on your `.bashrc` or `.zshrc`.
+</Note>
+
+## Permissions Management
+
+### Wildcard Syntax
+
+<Tip>
+Use `/permissions` with wildcard syntax instead of `dangerously-skip-permissions`:
+- `Bash(npm run *)` — Allow all npm scripts
+- `Edit(/docs/**)` — Allow editing all files in docs directory
+</Tip>
+
+This approach:
+- Maintains safety while reducing friction
+- Documents team-approved permissions
+- Supports glob patterns for flexibility
+
+<Warning>
+Never use `dangerously-skip-permissions` in production or shared codebases. Always prefer explicit permission configuration.
+</Warning>
+
+## Sandboxing
+
+<Tip>
+Use `/sandbox` to reduce permission prompts with file and network isolation.
+</Tip>
+
+Claude Code's sandbox:
+- Runs on your machine (open source)
+- Provides file isolation
+- Provides network isolation
+- Reduces security prompts while maintaining safety
+
+<Note>
+See [Sandboxing Documentation](https://code.claude.com/docs/en/sandboxing) for detailed configuration.
+</Note>
+
+## Settings Customization
+
+<Tip>
+Explore `settings.json` features for a personalized experience:
+- [Output Styles](https://code.claude.com/docs/en/output-styles) — e.g., Explanatory when learning a new codebase
+- Plan Directory — customize where plans are stored
+- Spinner Verbs — customize loading messages
+</Tip>
+
+### Output Styles
+
+Run `/config` to set an output style:
+
+- **Explanatory** — Recommended when learning a new codebase; Claude explains frameworks and patterns
+- **Learning** — Claude coaches you through making code changes
+- **Custom** — Create custom output styles to adjust Claude's voice
+
+### Spinner Verbs
+
+Customize your spinner verbs to personalize or share with your team:
+
+```json
+{
+  "spinnerVerbs": [
+    "pondering",
+    "architecting",
+    "refactoring",
+    "deploying"
+  ]
+}
+```
+
+<Note>
+Check your customized `settings.json` into git so your team can benefit from shared configuration.
+</Note>

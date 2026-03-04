@@ -1,0 +1,184 @@
+---
+title: MCP Servers Best Practice
+description: MCP (Model Context Protocol) servers extend Claude Code with connections to external tools, databases, and APIs
+icon: server
+---
+
+<Info>
+  **Last Updated:** March 02, 2026 12:30 PM PKT
+</Info>
+
+MCP (Model Context Protocol) servers extend Claude Code with connections to external tools, databases, and APIs. This guide covers recommended servers for daily use and configuration best practices.
+
+## MCP Servers for Daily Use
+
+<Note>
+  *"Went overboard with 15 MCP servers thinking more = better. Ended up using only 4 daily."* — [r/mcp](https://reddit.com/r/mcp/comments/1mj0fxs/) (682 upvotes)
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Context7" icon="book-open" href="https://github.com/upstash/context7">
+    **What It Does:** Fetches up-to-date library docs into context. Prevents hallucinated APIs from outdated training data
+    
+    **Resources:**
+    - [Reddit: "by far the best MCP for coding"](https://reddit.com/r/mcp/comments/1qarjqm/)
+    - [npm package](https://www.npmjs.com/package/@upstash/context7-mcp)
+  </Card>
+  
+  <Card title="Playwright" icon="browser" href="https://github.com/microsoft/playwright-mcp">
+    **What It Does:** Browser automation — implement, test, and verify UI features autonomously. Screenshots, navigation, form testing
+    
+    **Resources:**
+    - [Reddit: essential for frontend](https://reddit.com/r/mcp/comments/1m59pk0/)
+    - [Playwright Docs](https://playwright.dev/)
+  </Card>
+  
+  <Card title="Claude in Chrome" icon="chrome" href="https://github.com/nicobailon/claude-code-in-chrome-mcp">
+    **What It Does:** Connects Claude to your real Chrome browser — inspect console, network, DOM. Debug what users actually see
+    
+    **Resources:**
+    - [Reddit: "game changer" for debugging](https://reddit.com/r/mcp/comments/1qarjqm/5_mcps_that_have_genuinely_made_me_10x_faster/nza0i7t/)
+    - [Comparison Report](../reports/claude-in-chrome-v-chrome-devtools-mcp.md)
+  </Card>
+  
+  <Card title="DeepWiki" icon="diagram-project" href="https://github.com/devanshusemwal/deepwiki-mcp">
+    **What It Does:** Fetches structured wiki-style documentation for any GitHub repo — architecture, API surface, relationships
+    
+    **Resources:**
+    - [Reddit: "put it behind a gateway with Context7"](https://reddit.com/r/mcp/comments/1qarjqm/)
+  </Card>
+  
+  <Card title="Excalidraw" icon="pen-ruler" href="https://github.com/antonpk1/excalidraw-mcp-app">
+    **What It Does:** Generate architecture diagrams, flowcharts, and system designs as hand-drawn Excalidraw sketches from prompts
+    
+    **Resources:**
+    - [GitHub Repository](https://github.com/antonpk1/excalidraw-mcp-app)
+  </Card>
+</CardGroup>
+
+<Tip>
+  **Workflow:** Research (Context7/DeepWiki) → Debug (Playwright/Chrome) → Document (Excalidraw)
+</Tip>
+
+## Configuration
+
+MCP servers are configured in `.mcp.json` at the project root (project-scoped) or in `~/.claude.json` (user-scoped).
+
+### Server Types
+
+| Type | Transport | Example |
+|------|-----------|------|
+| **stdio** | Spawns a local process | `npx`, `python`, binary |
+| **http** | Connects to a remote URL | HTTP/SSE endpoint |
+
+### Example `.mcp.json`
+
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp"]
+    },
+    "deepwiki": {
+      "command": "npx",
+      "args": ["-y", "deepwiki-mcp"]
+    },
+    "remote-api": {
+      "type": "http",
+      "url": "https://mcp.example.com/mcp"
+    }
+  }
+}
+```
+
+### Settings for MCP Servers
+
+These settings in `.claude/settings.json` control MCP server approval:
+
+<ResponseField name="enableAllProjectMcpServers" type="boolean">
+  Auto-approve all `.mcp.json` servers without prompting
+</ResponseField>
+
+<ResponseField name="enabledMcpjsonServers" type="array">
+  Allowlist of specific server names to auto-approve
+</ResponseField>
+
+<ResponseField name="disabledMcpjsonServers" type="array">
+  Blocklist of specific server names to reject
+</ResponseField>
+
+### Permission Rules for MCP Tools
+
+MCP tools follow the `mcp__<server>__<tool>` naming convention in permission rules:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__*",
+      "mcp__context7__*",
+      "mcp__playwright__browser_snapshot"
+    ],
+    "deny": [
+      "mcp__dangerous-server__*"
+    ]
+  }
+}
+```
+
+<Warning>
+  Use wildcards carefully with MCP permissions. Be explicit about which servers and tools are allowed.
+</Warning>
+
+## MCP Scopes
+
+MCP servers can be defined at three levels:
+
+| Scope | Location | Purpose |
+|-------|----------|------|
+| **Project** | `.mcp.json` (repo root) | Team-shared servers, committed to git |
+| **User** | `~/.claude.json` (`mcpServers` key) | Personal servers across all projects |
+| **Subagent** | Agent frontmatter (`mcpServers` field) | Servers scoped to a specific subagent |
+
+<Note>
+  **Precedence:** Subagent > Project > User
+</Note>
+
+## Subagent MCP Configuration
+
+You can scope MCP servers to specific subagents:
+
+```yaml
+---
+name: deploy-manager
+mcpServers:
+  - slack
+  - name: pagerduty
+    command: npx
+    args: ["-y", "@pagerduty/mcp-server"]
+---
+```
+
+This ensures the agent only has access to the MCP servers it needs, improving security and performance.
+
+## Sources
+
+<CardGroup cols={2}>
+  <Card title="MCP Servers Documentation" icon="book" href="https://code.claude.com/docs/en/mcp">
+    Official Claude Code MCP documentation
+  </Card>
+  <Card title="Model Context Protocol" icon="link" href="https://modelcontextprotocol.io/">
+    MCP specification and reference
+  </Card>
+  <Card title="5 MCPs for 10x Faster" icon="reddit" href="https://reddit.com/r/mcp/comments/1qarjqm/">
+    Community recommendations from r/mcp
+  </Card>
+  <Card title="MCP Server Overload" icon="reddit" href="https://reddit.com/r/mcp/comments/1mj0fxs/">
+    Discussion on optimal MCP server count
+  </Card>
+</CardGroup>

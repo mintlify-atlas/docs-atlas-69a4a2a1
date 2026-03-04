@@ -1,0 +1,337 @@
+---
+title: Claude Code Best Practice
+description: Master Claude Code through comprehensive best practices, patterns, and reference implementations
+mode: custom
+---
+
+<div className="relative bg-gradient-to-br from-[#0f1117] via-[#1a1d27] to-[#0f1117] dark:from-[#0f1117] dark:via-[#1a1d27] dark:to-[#0f1117] py-20 overflow-hidden">
+  {/* Background pattern */}
+  <div className="absolute inset-0 opacity-10">
+    <div className="absolute inset-0" style={{backgroundImage: "radial-gradient(circle at 1px 1px, #94cb04 1px, transparent 0)", backgroundSize: "40px 40px"}}></div>
+  </div>
+  
+  <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      {/* Content */}
+      <div className="lg:col-span-7 space-y-6">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#94cb04]/10 dark:bg-[#94cb04]/10 border border-[#94cb04]/20 dark:border-[#94cb04]/20">
+          <span className="text-[#94cb04] dark:text-[#94cb04] text-sm font-semibold">★ 8,094 stars on GitHub</span>
+        </div>
+        
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white dark:text-white leading-tight">
+          Claude Code<br />
+          <span className="text-[#94cb04] dark:text-[#94cb04]">Best Practice</span>
+        </h1>
+        
+        <p className="text-lg sm:text-xl text-gray-300 dark:text-gray-300 max-w-2xl leading-relaxed">
+          Comprehensive best practices, patterns, and reference implementations for Claude Code. Learn how to master commands, subagents, skills, hooks, and orchestration workflows.
+        </p>
+        
+        <div className="flex flex-wrap gap-4 pt-4">
+          <a 
+            href="/quickstart"
+            className="inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-black dark:text-black bg-[#94cb04] dark:bg-[#94cb04] rounded-lg hover:bg-[#a8df05] dark:hover:bg-[#a8df05] transition-colors shadow-lg"
+          >
+            Get Started
+            <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          
+          <a 
+            href="/concepts/commands"
+            className="inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-white dark:text-white bg-white/10 dark:bg-white/10 border border-white/20 dark:border-white/20 rounded-lg hover:bg-white/20 dark:hover:bg-white/20 hover:border-[#94cb04]/50 dark:hover:border-[#94cb04]/50 transition-colors"
+          >
+            Explore Concepts
+          </a>
+          
+          <a 
+            href="https://github.com/shanraisshan/claude-code-best-practice"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-white dark:text-white bg-white/10 dark:bg-white/10 border border-white/20 dark:border-white/20 rounded-lg hover:bg-white/20 dark:hover:bg-white/20 hover:border-[#94cb04]/50 dark:hover:border-[#94cb04]/50 transition-colors"
+          >
+            <svg className="mr-2 w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+            </svg>
+            View on GitHub
+          </a>
+        </div>
+      </div>
+      
+      {/* Visual element */}
+      <div className="hidden lg:block lg:col-span-5">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#94cb04]/20 to-transparent dark:from-[#94cb04]/20 dark:to-transparent blur-3xl"></div>
+          <div className="relative bg-[#1a1d27]/50 dark:bg-[#1a1d27]/50 backdrop-blur-sm rounded-2xl border border-[#94cb04]/20 dark:border-[#94cb04]/20 p-6 space-y-4">
+            <div className="flex items-center gap-2 text-[#94cb04] dark:text-[#94cb04] font-mono text-sm">
+              <span className="text-gray-400 dark:text-gray-400">$</span>
+              <span>claude</span>
+            </div>
+            <div className="space-y-2 text-gray-300 dark:text-gray-300 text-sm font-mono">
+              <div className="text-[#94cb04] dark:text-[#94cb04]">/weather-orchestrator</div>
+              <div className="text-gray-500 dark:text-gray-500">→ Command orchestrates workflow</div>
+              <div className="text-gray-500 dark:text-gray-500">→ Agent fetches data with skill</div>
+              <div className="text-gray-500 dark:text-gray-500">→ Skill creates SVG output</div>
+              <div className="mt-4 pt-4 border-t border-[#94cb04]/20 dark:border-[#94cb04]/20 text-[#94cb04] dark:text-[#94cb04]">✓ Weather card generated</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{/* Quick Start Section */}
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="space-y-4 mb-8">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Quick Start</h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400">
+      Get up and running with Claude Code best practices in minutes
+    </p>
+  </div>
+  
+  <Steps>
+    <Step title="Install Claude Code">
+      Install Claude Code CLI from the official repository or download the latest release.
+      
+      ```bash
+      # Visit https://code.claude.com/docs/en/setup for installation instructions
+      claude --version
+      ```
+    </Step>
+    
+    <Step title="Clone the repository">
+      Clone the best practice repository to explore reference implementations.
+      
+      ```bash
+      git clone https://github.com/shanraisshan/claude-code-best-practice.git
+      cd claude-code-best-practice
+      ```
+      
+      <Note>
+        The repository contains live examples of commands, subagents, skills, hooks, and orchestration patterns in the `.claude/` directory.
+      </Note>
+    </Step>
+    
+    <Step title="Explore the weather orchestration example">
+      Run the example workflow to see the Command → Agent → Skill architecture in action.
+      
+      ```bash
+      claude
+      /weather-orchestrator
+      ```
+      
+      <Accordion title="What happens behind the scenes">
+        1. **Command** (`/weather-orchestrator`) asks you for temperature unit preference
+        2. **Agent** (`weather-agent`) fetches temperature using its preloaded `weather-fetcher` skill
+        3. **Skill** (`weather-svg-creator`) creates an SVG weather card
+        
+        This demonstrates two skill patterns: agent skills (preloaded) and standalone skills (invoked).
+      </Accordion>
+    </Step>
+    
+    <Step title="Customize for your project">
+      Copy patterns from `.claude/commands/`, `.claude/agents/`, and `.claude/skills/` to your own projects. Start with the [quickstart guide](/quickstart) for detailed instructions.
+      
+      ```bash
+      # Create your own command
+      mkdir -p .claude/commands
+      touch .claude/commands/my-workflow.md
+      ```
+    </Step>
+  </Steps>
+</div>
+
+{/* Core Concepts Section */}
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="space-y-4 mb-8">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Core Concepts</h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400">
+      Master the fundamental building blocks of Claude Code
+    </p>
+  </div>
+  
+  <CardGroup cols={2}>
+    <Card title="Commands" icon="terminal" href="/concepts/commands">
+      Entry-point prompts for workflows invoked with `/command-name`. Define reusable workflows with frontmatter configuration.
+    </Card>
+    
+    <Card title="Subagents" icon="robot" href="/concepts/subagents">
+      Custom agents with specialized tools, permissions, and models. Orchestrate complex tasks with the Task tool.
+    </Card>
+    
+    <Card title="Skills" icon="book-open" href="/concepts/skills">
+      Reusable knowledge and workflows with progressive disclosure. Preload into agents or invoke on-demand.
+    </Card>
+    
+    <Card title="Hooks" icon="webhook" href="/concepts/hooks">
+      Deterministic scripts that run on lifecycle events like PreToolUse, PostToolUse, and SessionStart.
+    </Card>
+    
+    <Card title="MCP Servers" icon="plug" href="/concepts/mcp-servers">
+      Model Context Protocol connections to external tools, databases, and APIs like Chrome, Playwright, and Slack.
+    </Card>
+    
+    <Card title="Settings" icon="gear" href="/concepts/settings">
+      Hierarchical configuration system with project, personal, and plugin-level settings for permissions and behavior.
+    </Card>
+    
+    <Card title="Memory" icon="brain" href="/concepts/memory">
+      Persistent context via CLAUDE.md files with ancestor and descendant loading for monorepos.
+    </Card>
+  </CardGroup>
+</div>
+
+{/* Workflows Section */}
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="space-y-4 mb-8">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Workflows & Patterns</h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400">
+      Learn proven patterns for real-world development
+    </p>
+  </div>
+  
+  <CardGroup cols={2}>
+    <Card title="Orchestration Workflow" icon="diagram-project" href="/workflows/orchestration-workflow">
+      Command → Agent → Skill architecture pattern demonstrated through the weather system example.
+    </Card>
+    
+    <Card title="RPI Workflow" icon="code-branch" href="/workflows/rpi-workflow">
+      Research, Plan, Implement pattern for systematic feature development and bug fixes.
+    </Card>
+    
+    <Card title="Agent Teams" icon="users" href="/workflows/agent-teams">
+      Multiple agents working in parallel on the same codebase with shared task coordination.
+    </Card>
+    
+    <Card title="Git Worktrees" icon="code-fork" href="/workflows/git-worktrees">
+      Isolated git branches for parallel development — each agent gets its own working copy.
+    </Card>
+  </CardGroup>
+</div>
+
+{/* Resources Section */}
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="space-y-4 mb-8">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Reports & Deep Dives</h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400">
+      Technical reports and expert tips from the community
+    </p>
+  </div>
+  
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <a 
+      href="/reports/agent-memory"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#94cb04] dark:hover:border-[#94cb04] bg-white dark:bg-[#1a1d27] overflow-hidden transition-all no-underline"
+    >
+      <div className="p-6 space-y-3">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-[#94cb04] dark:group-hover:text-[#94cb04] transition-colors">
+          Agent Memory
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Persistent memory scopes (user, project, local) for subagents — enabling agents to learn across sessions.
+        </p>
+        <div className="flex items-center gap-2 text-sm text-[#94cb04] dark:text-[#94cb04] group-hover:gap-3 transition-all">
+          <span>Read report</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+    
+    <a 
+      href="/reports/advanced-tool-use"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#94cb04] dark:hover:border-[#94cb04] bg-white dark:bg-[#1a1d27] overflow-hidden transition-all no-underline"
+    >
+      <div className="p-6 space-y-3">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-[#94cb04] dark:group-hover:text-[#94cb04] transition-colors">
+          Advanced Tool Use
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Programmatic Tool Calling (PTC), Tool Search, and Tool Use Examples for power users.
+        </p>
+        <div className="flex items-center gap-2 text-sm text-[#94cb04] dark:text-[#94cb04] group-hover:gap-3 transition-all">
+          <span>Read report</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+    
+    <a 
+      href="/tips/workflow-tips"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#94cb04] dark:hover:border-[#94cb04] bg-white dark:bg-[#1a1d27] overflow-hidden transition-all no-underline"
+    >
+      <div className="p-6 space-y-3">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-[#94cb04] dark:group-hover:text-[#94cb04] transition-colors">
+          Workflow Tips
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Best practices for CLAUDE.md size, command vs agent usage, and context management from production users.
+        </p>
+        <div className="flex items-center gap-2 text-sm text-[#94cb04] dark:text-[#94cb04] group-hover:gap-3 transition-all">
+          <span>View tips</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+    
+    <a 
+      href="/tips/boris-cherny-tips"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#94cb04] dark:hover:border-[#94cb04] bg-white dark:bg-[#1a1d27] overflow-hidden transition-all no-underline"
+    >
+      <div className="p-6 space-y-3">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-[#94cb04] dark:group-hover:text-[#94cb04] transition-colors">
+          Boris Cherny Tips
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          12 ways people are customizing their Claude Code setups, curated by the Claude Code team.
+        </p>
+        <div className="flex items-center gap-2 text-sm text-[#94cb04] dark:text-[#94cb04] group-hover:gap-3 transition-all">
+          <span>View tips</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+{/* Community Section */}
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="rounded-2xl bg-gradient-to-br from-[#94cb04]/10 to-[#94cb04]/5 dark:from-[#94cb04]/10 dark:to-[#94cb04]/5 border border-[#94cb04]/20 dark:border-[#94cb04]/20 p-8 md:p-12">
+    <div className="max-w-3xl mx-auto text-center space-y-6">
+      <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+        Ready to master Claude Code?
+      </h2>
+      <p className="text-lg text-gray-600 dark:text-gray-400">
+        Start with the quickstart guide and explore the reference implementations in the repository.
+      </p>
+      <div className="flex flex-wrap justify-center gap-4 pt-4">
+        <a 
+          href="/quickstart"
+          className="inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-black dark:text-black bg-[#94cb04] dark:bg-[#94cb04] rounded-lg hover:bg-[#a8df05] dark:hover:bg-[#a8df05] transition-colors shadow-lg"
+        >
+          Get Started
+        </a>
+        <a 
+          href="https://github.com/shanraisshan/claude-code-best-practice"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-gray-900 dark:text-white bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] rounded-lg hover:border-[#94cb04] dark:hover:border-[#94cb04] transition-colors"
+        >
+          <svg className="mr-2 w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+          </svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

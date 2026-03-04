@@ -1,0 +1,403 @@
+---
+title: Commands Best Practice
+description: Complete reference for Claude Code commands — command definitions, frontmatter fields, and all built-in slash commands
+icon: terminal
+---
+
+<Info>
+  **Last Updated:** March 2, 2026
+</Info>
+
+Complete reference for Claude Code commands — command definitions, frontmatter fields, and all built-in slash commands.
+
+## Frontmatter Fields
+
+Custom commands are defined in `.claude/commands/<name>.md` with optional YAML frontmatter.
+
+<ResponseField name="description" type="string" required>
+  What the command does. Shown in autocomplete and used by Claude for auto-discovery
+</ResponseField>
+
+<ResponseField name="argument-hint" type="string">
+  Hint shown during autocomplete (e.g., `[issue-number]`, `[filename]`)
+</ResponseField>
+
+<ResponseField name="allowed-tools" type="string">
+  Tools allowed without permission prompts when this command is active
+</ResponseField>
+
+<ResponseField name="model" type="string">
+  Model to use when this command runs (e.g., `haiku`, `sonnet`, `opus`)
+</ResponseField>
+
+## String Substitutions
+
+Available inside command markdown for dynamic values:
+
+| Variable | Description |
+|----------|-------------|
+| `$ARGUMENTS` | All arguments passed when invoking the command |
+| `$ARGUMENTS[N]` | Access a specific argument by 0-based index |
+| `$N` | Shorthand for `$ARGUMENTS[N]` (e.g., `$0`, `$1`) |
+| `${CLAUDE_SESSION_ID}` | Current session identifier |
+| `` !`command` `` | Dynamic context injection — shell command output replaces the placeholder before Claude sees it |
+
+## Invocation
+
+Custom commands are invoked by typing `/command-name` in Claude Code's interactive mode:
+
+<CardGroup cols={2}>
+  <Card title="Direct Invocation" icon="forward">
+    `/command-name` — Invoke directly from the command menu
+  </Card>
+  <Card title="With Arguments" icon="brackets-curly">
+    `/command-name [args]` — Pass arguments that map to `$ARGUMENTS`
+  </Card>
+  <Card title="Autocomplete" icon="list">
+    Type `/` to see all available commands with descriptions
+  </Card>
+  <Card title="Subdirectories" icon="folder-tree">
+    Commands in subdirectories use `/subdir:command-name`
+  </Card>
+</CardGroup>
+
+## Example: Minimal Command
+
+```yaml
+---
+description: Fetch weather data for Dubai and create an SVG weather card
+model: haiku
+---
+
+Fetch the current temperature for Dubai, UAE and create a visual SVG weather card.
+```
+
+## Example: Full-Featured Command (All Fields)
+
+```yaml
+---
+description: Fix a GitHub issue by number, following team coding standards
+argument-hint: [issue-number]
+allowed-tools: Read, Edit, Write, Bash(gh *), Bash(npm test *)
+model: sonnet
+---
+
+Fix GitHub issue $0 following our coding standards.
+
+## Context
+- PR diff: !`gh pr diff`
+- Issue details: !`gh issue view $0`
+
+## Steps
+1. Read the issue description
+2. Understand the requirements
+3. Implement the fix
+4. Write tests
+5. Create a commit
+
+Session: ${CLAUDE_SESSION_ID}
+```
+
+## Scope and Priority
+
+When multiple commands share the same name, the higher-priority location wins:
+
+| Location | Scope | Priority |
+|----------|-------|----------|
+| Project (`.claude/commands/`) | This project only | 1 (highest) |
+| Personal (`~/.claude/commands/`) | All your projects | 2 |
+| Plugin (`<plugin>/commands/`) | Where plugin is enabled | 3 (lowest) |
+
+## Claude Commands
+
+### Session Management
+
+<AccordionGroup>
+  <Accordion title="/clear" icon="broom">
+    <Badge variant="info">Session</Badge>
+    
+    Clear conversation history and start fresh
+  </Accordion>
+  
+  <Accordion title="/compact [instructions]" icon="compress">
+    <Badge variant="info">Session</Badge>
+    
+    Compress conversation to free context window. Optional instructions focus the compaction
+  </Accordion>
+  
+  <Accordion title="/exit" icon="right-from-bracket">
+    <Badge variant="info">Session</Badge>
+    
+    Exit the REPL
+  </Accordion>
+  
+  <Accordion title="/fork" icon="code-fork">
+    <Badge variant="info">Session</Badge>
+    
+    Fork the current conversation into a new session
+  </Accordion>
+  
+  <Accordion title="/rename <name>" icon="pen-to-square">
+    <Badge variant="info">Session</Badge>
+    
+    Rename the current session for easier identification
+  </Accordion>
+  
+  <Accordion title="/resume [session]" icon="rotate-right">
+    <Badge variant="info">Session</Badge>
+    
+    Resume a previous conversation by ID or name, or open the session picker
+  </Accordion>
+  
+  <Accordion title="/rewind" icon="backward">
+    <Badge variant="info">Session</Badge>
+    
+    Rewind conversation and/or code to an earlier point
+  </Accordion>
+  
+  <Accordion title="/teleport" icon="satellite-dish">
+    <Badge variant="info">Session</Badge>
+    
+    Resume a remote session from claude.ai (subscribers only)
+  </Accordion>
+</AccordionGroup>
+
+### Context & Usage
+
+<AccordionGroup>
+  <Accordion title="/context" icon="chart-simple">
+    <Badge variant="warning">Context</Badge>
+    
+    Visualize current context usage as a colored grid with token counts
+  </Accordion>
+  
+  <Accordion title="/cost" icon="dollar-sign">
+    <Badge variant="warning">Context</Badge>
+    
+    Show token usage statistics and spending for the current session
+  </Accordion>
+  
+  <Accordion title="/stats" icon="chart-line">
+    <Badge variant="warning">Context</Badge>
+    
+    Visualize daily usage, session history, streaks, and model preferences
+  </Accordion>
+  
+  <Accordion title="/usage" icon="gauge">
+    <Badge variant="warning">Context</Badge>
+    
+    Show plan usage limits and rate limit status (subscription plans only)
+  </Accordion>
+</AccordionGroup>
+
+### Model Configuration
+
+<AccordionGroup>
+  <Accordion title="/fast" icon="bolt">
+    <Badge variant="success">Model</Badge>
+    
+    Toggle fast mode — same Opus 4.6 model with faster output
+  </Accordion>
+  
+  <Accordion title="/model" icon="microchip">
+    <Badge variant="success">Model</Badge>
+    
+    Switch models (haiku, sonnet, opus) and adjust effort level
+  </Accordion>
+  
+  <Accordion title="/plan" icon="lightbulb">
+    <Badge variant="success">Model</Badge>
+    
+    Enter read-only planning mode — suggests approaches without making changes
+  </Accordion>
+</AccordionGroup>
+
+### Project & Memory
+
+<AccordionGroup>
+  <Accordion title="/init" icon="sparkles">
+    <Badge variant="tip">Project</Badge>
+    
+    Initialize a new project with CLAUDE.md guide
+  </Accordion>
+  
+  <Accordion title="/memory" icon="brain">
+    <Badge variant="tip">Memory</Badge>
+    
+    View and edit CLAUDE.md memory files (user, project, and local scope)
+  </Accordion>
+</AccordionGroup>
+
+### Configuration
+
+<AccordionGroup>
+  <Accordion title="/config" icon="gear">
+    <Badge variant="note">Config</Badge>
+    
+    Open the interactive Settings interface with search functionality
+  </Accordion>
+  
+  <Accordion title="/keybindings" icon="keyboard">
+    <Badge variant="note">Config</Badge>
+    
+    Customize keyboard shortcuts per context, create chord sequences
+  </Accordion>
+  
+  <Accordion title="/permissions" icon="shield">
+    <Badge variant="note">Config</Badge>
+    
+    View or update tool permissions
+  </Accordion>
+  
+  <Accordion title="/sandbox" icon="box">
+    <Badge variant="note">Config</Badge>
+    
+    Configure sandboxing with dependency status
+  </Accordion>
+  
+  <Accordion title="/statusline" icon="bars">
+    <Badge variant="note">Config</Badge>
+    
+    Set up Claude Code's status line UI
+  </Accordion>
+  
+  <Accordion title="/terminal-setup" icon="terminal">
+    <Badge variant="note">Config</Badge>
+    
+    Enable shift+enter for newlines in IDE terminals
+  </Accordion>
+  
+  <Accordion title="/theme" icon="palette">
+    <Badge variant="note">Config</Badge>
+    
+    Change the color theme
+  </Accordion>
+  
+  <Accordion title="/vim" icon="code">
+    <Badge variant="note">Config</Badge>
+    
+    Enable vim-style editing mode
+  </Accordion>
+</AccordionGroup>
+
+### Extensions
+
+<AccordionGroup>
+  <Accordion title="/agents" icon="users">
+    <Badge variant="primary">Extensions</Badge>
+    
+    Manage custom subagents — view, create, edit, delete
+  </Accordion>
+  
+  <Accordion title="/hooks" icon="link">
+    <Badge variant="primary">Extensions</Badge>
+    
+    Interactive interface to manage hooks
+  </Accordion>
+  
+  <Accordion title="/ide" icon="laptop-code">
+    <Badge variant="primary">Extensions</Badge>
+    
+    Connect to IDE integration
+  </Accordion>
+  
+  <Accordion title="/mcp" icon="server">
+    <Badge variant="primary">Extensions</Badge>
+    
+    Manage MCP server connections — add, enable, list, get info, OAuth
+  </Accordion>
+  
+  <Accordion title="/plugin" icon="plug">
+    <Badge variant="primary">Extensions</Badge>
+    
+    Manage plugins — install, uninstall, enable, disable, browse marketplaces
+  </Accordion>
+  
+  <Accordion title="/skills" icon="wand-magic-sparkles">
+    <Badge variant="primary">Extensions</Badge>
+    
+    View available skills and their descriptions
+  </Accordion>
+</AccordionGroup>
+
+### Debug & Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="/debug [description]" icon="bug">
+    <Badge variant="danger">Debug</Badge>
+    
+    Troubleshoot the current session by reading the debug log
+  </Accordion>
+  
+  <Accordion title="/doctor" icon="stethoscope">
+    <Badge variant="danger">Debug</Badge>
+    
+    Check the health of your Claude Code installation
+  </Accordion>
+  
+  <Accordion title="/feedback" icon="message">
+    <Badge variant="danger">Debug</Badge>
+    
+    Generate a GitHub issue URL for reporting bugs or feedback
+  </Accordion>
+  
+  <Accordion title="/help" icon="circle-question">
+    <Badge variant="danger">Debug</Badge>
+    
+    Show all available slash commands and usage help
+  </Accordion>
+  
+  <Accordion title="/tasks" icon="list-check">
+    <Badge variant="danger">Debug</Badge>
+    
+    List and manage background tasks
+  </Accordion>
+  
+  <Accordion title="/todos" icon="check-square">
+    <Badge variant="danger">Debug</Badge>
+    
+    List current TODO items
+  </Accordion>
+</AccordionGroup>
+
+### Export & Authentication
+
+<AccordionGroup>
+  <Accordion title="/copy" icon="clipboard">
+    <Badge>Export</Badge>
+    
+    Copy the last assistant response to clipboard
+  </Accordion>
+  
+  <Accordion title="/export [filename]" icon="file-export">
+    <Badge>Export</Badge>
+    
+    Export the current conversation to a file or clipboard
+  </Accordion>
+  
+  <Accordion title="/login" icon="right-to-bracket">
+    <Badge>Auth</Badge>
+    
+    Authenticate with Claude Code via OAuth
+  </Accordion>
+  
+  <Accordion title="/logout" icon="right-from-bracket">
+    <Badge>Auth</Badge>
+    
+    Log out from Claude Code
+  </Accordion>
+</AccordionGroup>
+
+## Sources
+
+<CardGroup cols={2}>
+  <Card title="Slash Commands" icon="book" href="https://code.claude.com/docs/en/slash-commands">
+    Official documentation for built-in slash commands
+  </Card>
+  <Card title="Interactive Mode" icon="terminal" href="https://code.claude.com/docs/en/interactive-mode">
+    Guide to Claude Code's interactive REPL
+  </Card>
+  <Card title="CHANGELOG" icon="clock-rotate-left" href="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md">
+    Latest updates and feature releases
+  </Card>
+</CardGroup>

@@ -1,0 +1,594 @@
+---
+title: MCP Servers
+description: Model Context Protocol connections to external tools, databases, and APIs
+---
+
+## What Are MCP Servers?
+
+MCP (Model Context Protocol) servers extend Claude Code with connections to external systems:
+
+- **Browser automation** (Playwright, Chrome DevTools)
+- **Documentation fetching** (Context7, DeepWiki)
+- **Cloud services** (AWS, GitHub, Slack)
+- **Databases** (PostgreSQL, Redis)
+- **File systems** and custom APIs
+
+MCP servers expose **tools** that Claude can invoke just like built-in tools (Read, Write, Bash).
+
+<Info>
+  MCP servers are configured in `.mcp.json` (project) or `~/.claude.json` (user), or in agent frontmatter.
+</Info>
+
+## Why MCP Matters
+
+MCP servers enable Claude to:
+
+- **Access real data**: Query databases, APIs, and cloud services
+- **Automate browsers**: Test UIs, debug console errors, verify deployments
+- **Fetch fresh docs**: Get up-to-date library documentation instead of relying on training data
+- **Integrate with tools**: Connect to Slack, GitHub, Jira, and internal systems
+
+<Warning>
+  MCP servers run with the same permissions as Claude Code. Only enable trusted servers.
+</Warning>
+
+## Recommended MCP Servers
+
+Based on community feedback (["/r/mcp"](https://reddit.com/r/mcp/comments/1qarjqm/)):
+
+<CardGroup cols={2}>
+  <Card title="Context7" icon="book" href="https://github.com/upstash/context7">
+    Fetches up-to-date library docs into context. Prevents hallucinated APIs from outdated training data.
+    
+    **Community**: "by far the best MCP for coding"
+  </Card>
+  
+  <Card title="Playwright" icon="browser" href="https://github.com/microsoft/playwright-mcp">
+    Browser automation — implement, test, and verify UI features autonomously. Screenshots, navigation, form testing.
+    
+    **Community**: "essential for frontend"
+  </Card>
+  
+  <Card title="Claude in Chrome" icon="chrome" href="https://github.com/nicobailon/claude-code-in-chrome-mcp">
+    Connects Claude to your real Chrome browser — inspect console, network, DOM. Debug what users actually see.
+    
+    **Community**: "game changer for debugging"
+  </Card>
+  
+  <Card title="DeepWiki" icon="diagram-project" href="https://github.com/devanshusemwal/deepwiki-mcp">
+    Fetches structured wiki-style documentation for any GitHub repo — architecture, API surface, relationships.
+    
+    **Community**: "put it behind a gateway with Context7"
+  </Card>
+</CardGroup>
+
+<Tip>
+  **Workflow**: Research (Context7/DeepWiki) → Debug (Playwright/Chrome) → Verify
+</Tip>
+
+## Configuration
+
+### Project-Scoped (Team-Shared)
+
+Create `.mcp.json` at project root (committed to git):
+
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp"]
+    },
+    "deepwiki": {
+      "command": "npx",
+      "args": ["-y", "deepwiki-mcp"]
+    },
+    "remote-api": {
+      "type": "http",
+      "url": "https://mcp.example.com/mcp"
+    }
+  }
+}
+```
+
+### User-Scoped (Personal)
+
+Add to `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"]
+    }
+  }
+}
+```
+
+### Agent-Scoped
+
+In agent frontmatter:
+
+```yaml
+---
+name: deploy-manager
+mcpServers:
+  - slack
+  - name: pagerduty
+    command: npx
+    args: ["-y", "@pagerduty/mcp-server"]
+---
+
+You have access to Slack and PagerDuty via MCP.
+```
+
+## Server Types
+
+<Tabs>
+  <Tab title="stdio (Local Process)">
+    Spawns a local process that communicates via stdin/stdout.
+    
+    **Most common for npm packages:**
+    
+    ```json
+    {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp"]
+    }
+    ```
+    
+    **Python servers:**
+    
+    ```json
+    {
+      "command": "python",
+      "args": ["server.py"]
+    }
+    ```
+    
+    **Binary servers:**
+    
+    ```json
+    {
+      "command": "/usr/local/bin/mcp-server",
+      "args": ["--port", "8080"]
+    }
+    ```
+  </Tab>
+  
+  <Tab title="http (Remote URL)">
+    Connects to a remote HTTP/SSE endpoint.
+    
+    ```json
+    {
+      "type": "http",
+      "url": "https://mcp.company.com/mcp"
+    }
+    ```
+    
+    Use for:
+    - Shared team servers
+    - Cloud-hosted MCP services
+    - Internal company APIs
+  </Tab>
+</Tabs>
+
+## Enabling MCP Servers
+
+By default, Claude Code prompts for approval when a `.mcp.json` server starts. Configure auto-approval in `.claude/settings.json`:
+
+<Tabs>
+  <Tab title="Auto-Approve All">
+    ```json
+    {
+      "enableAllProjectMcpServers": true
+    }
+    ```
+    
+    Enables all servers in `.mcp.json` without prompting.
+  </Tab>
+  
+  <Tab title="Allowlist Specific Servers">
+    ```json
+    {
+      "enabledMcpjsonServers": [
+        "context7",
+        "playwright",
+        "deepwiki"
+      ]
+    }
+    ```
+    
+    Only these servers are auto-approved.
+  </Tab>
+  
+  <Tab title="Blocklist Servers">
+    ```json
+    {
+      "disabledMcpjsonServers": [
+        "experimental-server"
+      ]
+    }
+    ```
+    
+    These servers are blocked even if defined.
+  </Tab>
+</Tabs>
+
+## Permissions for MCP Tools
+
+MCP tools follow the `mcp__<server>__<tool>` naming convention:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__*",                          // All MCP tools
+      "mcp__context7__*",                // All Context7 tools
+      "mcp__playwright__browser_snapshot" // Specific tool
+    ],
+    "deny": [
+      "mcp__dangerous-server__*"
+    ]
+  }
+}
+```
+
+**Wildcard patterns:**
+- `mcp__*` — All MCP servers and tools
+- `mcp__memory__.*` — All tools from memory server
+- `mcp__.*__write.*` — Any write tool from any server
+
+## MCP Scopes
+
+MCP servers can be defined at three levels:
+
+<Steps>
+  <Step title="Subagent (highest priority)">
+    **Location**: Agent frontmatter `mcpServers` field
+    
+    **Purpose**: Servers scoped to a specific subagent
+    
+    ```yaml
+    ---
+    name: deploy-manager
+    mcpServers:
+      - slack
+    ---
+    ```
+  </Step>
+  
+  <Step title="Project">
+    **Location**: `.mcp.json` at repo root
+    
+    **Purpose**: Team-shared servers, committed to git
+    
+    ```json
+    {
+      "mcpServers": {
+        "playwright": {...}
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="User (lowest priority)">
+    **Location**: `~/.claude.json` (`mcpServers` key)
+    
+    **Purpose**: Personal servers across all projects
+    
+    ```json
+    {
+      "mcpServers": {
+        "github": {...}
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+## Real Examples from Repository
+
+From `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp"]
+    },
+    "reddit-mcp-server": {
+      "type": "http",
+      "url": "http://144.91.76.33:8080/mcp"
+    },
+    "tavily-web-search": {
+      "type": "http",
+      "url": "https://mcp.tavily.com/mcp/?tavilyApiKey=tvly-dev-..."
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "deepwiki": {
+      "command": "npx",
+      "args": ["-y", "deepwiki-mcp"]
+    }
+  }
+}
+```
+
+From `.claude/settings.json`:
+
+```json
+{
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "mcp__*",
+      "mcp__playwright__*",
+      "mcp__reddit-mcp-server__get_post_details",
+      "mcp__reddit-mcp-server__search_reddit",
+      "mcp__tavily-web-search__tavily_search"
+    ]
+  }
+}
+```
+
+## Browser Automation MCPs
+
+Three options for browser automation:
+
+<Tabs>
+  <Tab title="Playwright MCP">
+    **Best for**: Automated testing, headless browser control
+    
+    ```json
+    {
+      "playwright": {
+        "command": "npx",
+        "args": ["-y", "@playwright/mcp"]
+      }
+    }
+    ```
+    
+    **Capabilities**:
+    - Navigate, click, type, screenshot
+    - Run in headless mode
+    - Multiple browser engines (Chromium, Firefox, WebKit)
+    - Parallel execution
+  </Tab>
+  
+  <Tab title="Claude in Chrome">
+    **Best for**: Debugging real user issues, inspecting live state
+    
+    ```json
+    {
+      "claude-in-chrome": {
+        "command": "npx",
+        "args": ["-y", "claude-code-in-chrome-mcp"]
+      }
+    }
+    ```
+    
+    **Capabilities**:
+    - Connects to your actual Chrome browser
+    - Inspect console logs, network requests, DOM
+    - Debug what users are seeing
+    - No headless mode — see everything
+  </Tab>
+  
+  <Tab title="Chrome DevTools MCP">
+    **Best for**: Low-level protocol access
+    
+    ```json
+    {
+      "chrome-devtools": {
+        "command": "npx",
+        "args": ["-y", "@anthropic-ai/mcp-server-puppeteer"]
+      }
+    }
+    ```
+    
+    **Capabilities**:
+    - Chrome DevTools Protocol access
+    - Performance profiling
+    - Network throttling
+    - Coverage analysis
+  </Tab>
+</Tabs>
+
+<CardGroup cols={1}>
+  <Card title="Browser Automation MCP Comparison" icon="browser" href="/reports/browser-automation-mcp">
+    Detailed comparison of Playwright, Chrome DevTools, and Claude in Chrome
+  </Card>
+</CardGroup>
+
+## MCP Management
+
+<Tabs>
+  <Tab title="Interactive Menu">
+    ```bash
+    claude
+    /mcp
+    ```
+    
+    Manage MCP server connections:
+    - Add new servers
+    - Enable/disable servers
+    - List active servers
+    - Get server info
+    - Handle OAuth
+  </Tab>
+  
+  <Tab title="List Servers">
+    ```bash
+    claude mcp list
+    ```
+    
+    Shows all configured MCP servers and their status.
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Start with 3-5 servers">
+    > "Went overboard with 15 MCP servers thinking more = better. Ended up using only 4 daily." — [r/mcp](https://reddit.com/r/mcp/comments/1mj0fxs/)
+    
+    Start minimal:
+    1. Context7 (docs)
+    2. Playwright or Claude in Chrome (browser)
+    3. One integration (GitHub, Slack, etc.)
+    
+    Add more as needed.
+  </Accordion>
+  
+  <Accordion title="Use npx for easy installation">
+    No need to install packages globally:
+    
+    ```json
+    {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp"]
+    }
+    ```
+    
+    The `-y` flag auto-confirms installation.
+  </Accordion>
+  
+  <Accordion title="Commit .mcp.json to git">
+    Share MCP servers with your team:
+    
+    ```bash
+    git add .mcp.json
+    git commit -m "Add Playwright MCP for UI testing"
+    ```
+    
+    Team members get the same tools automatically.
+  </Accordion>
+  
+  <Accordion title="Set appropriate permissions">
+    Don't blindly allow all MCP tools:
+    
+    ```json
+    // Bad
+    "allow": ["mcp__*"]
+    
+    // Good
+    "allow": [
+      "mcp__playwright__browser_snapshot",
+      "mcp__context7__*"
+    ]
+    ```
+  </Accordion>
+  
+  <Accordion title="Use environment variables for secrets">
+    Never commit API keys to `.mcp.json`:
+    
+    ```json
+    {
+      "github": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github"],
+        "env": {
+          "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+        }
+      }
+    }
+    ```
+    
+    Set in `.claude/settings.local.json` (git-ignored):
+    
+    ```json
+    {
+      "env": {
+        "GITHUB_TOKEN": "ghp_your_token_here"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Environment Variables
+
+Configure MCP behavior via settings:
+
+```json
+{
+  "env": {
+    "MCP_TIMEOUT": "10000",           // Startup timeout (ms)
+    "MAX_MCP_OUTPUT_TOKENS": "50000"  // Max output tokens
+  }
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Server won't start">
+    Check logs:
+    
+    ```bash
+    claude --debug
+    ```
+    
+    Common issues:
+    - Missing dependencies (run `npx` command manually)
+    - Port conflicts (another process using the port)
+    - Timeout too short (increase `MCP_TIMEOUT`)
+  </Accordion>
+  
+  <Accordion title="Permission denied">
+    Add to `.claude/settings.json`:
+    
+    ```json
+    {
+      "permissions": {
+        "allow": ["mcp__server-name__*"]
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Server not listed">
+    Ensure `.mcp.json` is valid JSON and in the project root.
+    
+    Test:
+    ```bash
+    cat .mcp.json | python -m json.tool
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Cross-Links
+
+<CardGroup cols={2}>
+  <Card title="Settings" icon="gear" href="/concepts/settings">
+    Configure MCP permissions and auto-approval
+  </Card>
+  
+  <Card title="Subagents" icon="robot" href="/concepts/subagents">
+    Scope MCP servers to specific agents
+  </Card>
+  
+  <Card title="MCP Best Practice" icon="star" href="/best-practices/mcp">
+    Recommended servers and configuration
+  </Card>
+  
+  <Card title="Browser Automation Report" icon="browser" href="/reports/browser-automation-mcp">
+    Compare Playwright, Chrome DevTools, and Claude in Chrome
+  </Card>
+</CardGroup>
+
+## Further Reading
+
+- [MCP Servers — Claude Code Docs](https://code.claude.com/docs/en/mcp)
+- [Model Context Protocol Specification](https://modelcontextprotocol.io/)
+- [5 MCPs that made me 10x faster — r/mcp](https://reddit.com/r/mcp/comments/1qarjqm/)
+- [MCP Marketplace](https://mcp.run/)

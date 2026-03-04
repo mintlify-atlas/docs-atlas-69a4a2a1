@@ -1,0 +1,408 @@
+---
+title: 'Skills Implementation'
+description: 'Real-world skill implementations showing agent skills vs standalone skills'
+---
+
+## Overview
+
+Skills provide domain knowledge and reusable instructions to Claude Code. There are **two distinct skill patterns**:
+
+1. **Agent Skills**: Preloaded into agents via the `skills:` frontmatter field
+2. **Standalone Skills**: Invoked directly via the `Skill` tool or slash commands
+
+This page shows real implementations of both patterns.
+
+## Two Skill Patterns
+
+<CardGroup cols={2}>
+  <Card title="Agent Skills" icon="robot">
+    **Preloaded via `skills:` field**
+    
+    - Injected into agent context at startup
+    - Not invoked separately
+    - Serve as domain knowledge
+    - Often marked `user-invocable: false`
+    
+    **Example**: `weather-fetcher`
+  </Card>
+  
+  <Card title="Standalone Skills" icon="wand-magic-sparkles">
+    **Invoked via `Skill` tool**
+    
+    - Invoked directly from commands or user
+    - Can be called via `/slash-command`
+    - Operate independently
+    - User-facing functionality
+    
+    **Example**: `weather-svg-creator`
+  </Card>
+</CardGroup>
+
+## Agent Skill: Weather Fetcher
+
+An **agent skill** preloaded into the `weather-agent` to provide API fetching instructions.
+
+### Complete Implementation
+
+**Location**: `.claude/skills/weather-fetcher/SKILL.md`
+
+The skill includes:
+
+**Frontmatter:**
+- `name: weather-fetcher`
+- `description: Instructions for fetching current weather temperature data for Dubai, UAE from Open-Meteo API`
+- `user-invocable: false` (this is an agent skill, not directly invocable)
+
+**Body Instructions:**
+1. Fetch weather data from Open-Meteo API for Dubai coordinates (25.2048, 55.2708)
+2. Support both Celsius and Fahrenheit temperature units
+3. Extract temperature from JSON response field: `current.temperature_2m`
+4. Return temperature value and unit clearly
+
+**Expected Output:**
+```
+Current Dubai Temperature: [X]°[C/F]
+Unit: [Celsius/Fahrenheit]
+```
+
+**Notes:** 
+- Open-Meteo is free, no API key required
+- Only fetch temperature, don't write files
+- Support both Celsius and Fahrenheit based on caller's request
+
+### Key Implementation Details
+
+<AccordionGroup>
+  <Accordion title="Frontmatter: Agent Skill Marker">
+    ```yaml
+    user-invocable: false
+    ```
+    
+    This skill is **not meant to be invoked directly**. It's preloaded into agents via the `skills:` field. Setting `user-invocable: false` hides it from the `/` command menu.
+  </Accordion>
+
+  <Accordion title="Frontmatter: Description">
+    ```yaml
+    description: Instructions for fetching current weather temperature data...
+    ```
+    
+    The description explains what the skill does. Since it's not user-invocable, this is mainly for documentation.
+  </Accordion>
+
+  <Accordion title="Body: Step-by-Step Instructions">
+    ```markdown
+    ## Instructions
+    
+    1. **Fetch Weather Data**: Use the WebFetch tool...
+    2. **Extract Temperature**: From the JSON response...
+    3. **Return Result**: Return the temperature value and unit clearly.
+    ```
+    
+    Agent skills provide **procedural knowledge**. They tell the agent HOW to accomplish a task, including exact API URLs, field paths, and expected outputs.
+  </Accordion>
+
+  <Accordion title="How It's Loaded">
+    In `.claude/agents/weather-agent.md`:
+    
+    ```yaml
+    skills:
+      - weather-fetcher
+    ```
+    
+    When the agent starts, the skill content is injected into its context. The agent can then "follow the weather-fetcher skill instructions" without needing a separate invocation.
+  </Accordion>
+</AccordionGroup>
+
+## Standalone Skill: Weather SVG Creator
+
+A **standalone skill** invoked directly to create visual output.
+
+### Complete Implementation
+
+**Location**: `.claude/skills/weather-svg-creator/SKILL.md`
+
+**Frontmatter:**
+- `name: weather-svg-creator`
+- `description: Creates an SVG weather card showing the current temperature for Dubai. Writes the SVG to orchestration-workflow/weather.svg and updates orchestration-workflow/output.md.`
+
+**Body Instructions:**
+
+**Task:** Create an SVG weather card displaying the temperature for Dubai, UAE, and write it along with a summary to output files.
+
+**Steps:**
+1. **Create SVG Weather Card** - Generate a clean SVG weather card with temperature, unit, and location text
+2. **Write SVG File** - Write the SVG content to `orchestration-workflow/weather.svg`
+3. **Write Output Summary** - Write markdown summary to `orchestration-workflow/output.md` with temperature, location, unit, and embedded SVG
+
+**Expected Input:** Temperature value and unit from the weather-agent (e.g., "28°C" and "Celsius")
+
+**Notes:**
+- Use the exact temperature value and unit provided - do not re-fetch or modify
+- The SVG should be a self-contained, valid SVG file
+- Keep the design minimal and clean
+- Both output files go in the `orchestration-workflow/` directory
+
+### Key Implementation Details
+
+<AccordionGroup>
+  <Accordion title="Frontmatter: User-Invocable">
+    ```yaml
+    name: weather-svg-creator
+    description: Creates an SVG weather card showing the current temperature...
+    ```
+    
+    No `user-invocable: false` — this skill CAN be invoked directly via `/weather-svg-creator` or the `Skill` tool.
+  </Accordion>
+
+  <Accordion title="Body: Template-Based Instructions">
+    The skill body provides template-based instructions for creating SVG weather cards:
+    
+    - Includes the exact SVG structure with placeholders for temperature
+    - Provides styling guidelines (colors, fonts, layout)
+    - Shows example output format
+    
+    Standalone skills often provide **templates and examples** that can be followed directly.
+  </Accordion>
+
+  <Accordion title="Body: File Output Instructions">
+    ```markdown
+    ### 2. Write SVG File
+    Write the SVG content to `orchestration-workflow/weather.svg`.
+    
+    ### 3. Write Output Summary
+    Write to `orchestration-workflow/output.md`...
+    ```
+    
+    Unlike agent skills (which just fetch data), standalone skills can perform file operations and create outputs.
+  </Accordion>
+
+  <Accordion title="How It's Invoked">
+    From `.claude/commands/weather-orchestrator.md`:
+    
+    ```markdown
+    Use the Skill tool to invoke the weather-svg-creator skill:
+    - skill: weather-svg-creator
+    ```
+    
+    The command uses the `Skill` tool. The skill receives the temperature data from the conversation context (from the previous agent invocation).
+  </Accordion>
+</AccordionGroup>
+
+## Comparison: Agent Skills vs Standalone Skills
+
+<Tabs>
+  <Tab title="Agent Skills">
+    ### Weather Fetcher (Agent Skill)
+    
+    **Frontmatter**:
+    ```yaml
+    name: weather-fetcher
+    description: Instructions for fetching current weather temperature data...
+    user-invocable: false  # Hidden from / menu
+    ```
+    
+    **Usage**:
+    ```yaml
+    # In .claude/agents/weather-agent.md
+    skills:
+      - weather-fetcher  # Preloaded at agent startup
+    ```
+    
+    **Characteristics**:
+    - Preloaded via `skills:` field
+    - Not invoked separately
+    - Provides procedural knowledge
+    - Often marked `user-invocable: false`
+    - Scope: domain instructions for the agent
+  </Tab>
+  
+  <Tab title="Standalone Skills">
+    ### Weather SVG Creator (Standalone Skill)
+    
+    **Frontmatter**:
+    ```yaml
+    name: weather-svg-creator
+    description: Creates an SVG weather card showing the current temperature...
+    # user-invocable defaults to true
+    ```
+    
+    **Usage**:
+    ```markdown
+    # From a command:
+    Use the Skill tool to invoke the weather-svg-creator skill:
+    - skill: weather-svg-creator
+    ```
+    
+    **Characteristics**:
+    - Invoked via `Skill` tool
+    - Can be called via `/weather-svg-creator`
+    - Performs file operations
+    - User-facing functionality
+    - Scope: standalone task execution
+  </Tab>
+</Tabs>
+
+## Advanced: Presentation Structure Skill
+
+An **agent skill** that provides structural knowledge for a self-evolving agent.
+
+### Implementation Excerpt
+
+**Location**: `.claude/skills/presentation/presentation-structure/SKILL.md`
+
+```markdown
+---
+name: presentation-structure
+description: Knowledge about the presentation slide format, weight system, navigation, and section structure
+---
+
+# Presentation Structure Skill
+
+Knowledge about how the presentation at `presentation/index.html` is structured.
+
+## Slide Format
+
+Each slide is a div with `data-slide` (sequential number) and optional `data-weight` (journey percentage):
+
+```html
+<!-- Regular slide -->
+<div class="slide" data-slide="12" data-weight="5">
+    <h1>Slide Title</h1>
+    <!-- content -->
+</div>
+
+<!-- Section divider slide -->
+<div class="slide section-slide" data-slide="10">
+    <h1>Section Name</h1>
+    <p class="section-desc">Description of this section</p>
+</div>
+```
+
+## Journey Bar Weight System
+
+- Slides with `data-weight="N"` contribute N% to the journey progress bar
+- All weights across the entire presentation MUST sum to exactly 100
+- The journey bar reads weights at page load and pre-computes cumulative sums
+- Slides without `data-weight` contribute 0% (informational slides, appendix)
+
+### Weight Distribution by Section
+
+| Section | Range | Total Weight |
+|---------|-------|-------------|
+| Part 0: Introduction | Slides 1-4 | 0% |
+| Part 1: Prerequisites | Slides 5-9 | 0% |
+| Part 2: Better Prompting | Slides 10-17 | 20% |
+| Part 3: Project Memory | Slides 18-24 | 20% |
+...
+```
+
+This skill provides **reference knowledge** about the presentation structure. The `presentation-curator` agent uses this to understand the current state before making changes.
+
+## Skill Frontmatter Reference
+
+<ParamField path="name" type="string">
+  Skill identifier and slash command name (defaults to directory name)
+</ParamField>
+
+<ParamField path="description" type="string">
+  When to invoke the skill (recommended for auto-discovery)
+</ParamField>
+
+<ParamField path="user-invocable" type="boolean" default="true">
+  Set to `false` to hide from `/` menu (agent skills)
+</ParamField>
+
+<ParamField path="argument-hint" type="string">
+  Autocomplete hint shown in CLI (e.g., `[issue-number]`)
+</ParamField>
+
+<ParamField path="allowed-tools" type="array">
+  Tools allowed without permission prompts when skill is active
+</ParamField>
+
+<ParamField path="model" type="string">
+  Model to use when skill is active
+</ParamField>
+
+<ParamField path="context" type="string">
+  Set to `fork` to run in isolated subagent context
+</ParamField>
+
+<ParamField path="agent" type="string">
+  Subagent type for `context: fork` (default: `general-purpose`)
+</ParamField>
+
+## Usage Examples
+
+<Tabs>
+  <Tab title="Agent Skill (Preloaded)">
+    **Create the skill**: Create `.claude/skills/api-helpers/SKILL.md` with frontmatter `user-invocable: false` and instructions for testing REST APIs.
+    
+    **Load into agent**: Add `skills: [api-helpers]` to agent frontmatter in `.claude/agents/api-tester.md`.
+    
+    The skill is preloaded at agent startup and provides background knowledge without needing explicit invocation.
+  </Tab>
+  
+  <Tab title="Standalone Skill (Invoked)">
+    **Create the skill**: Create `.claude/skills/format-json/SKILL.md` with instructions for formatting JSON files with 2-space indentation.
+    
+    **Invoke directly**: Run `/format-json` in Claude Code CLI, or invoke via the `Skill` tool from commands/agents.
+    
+    The skill is user-invocable and can be called on-demand whenever JSON formatting is needed.
+  </Tab>
+</Tabs>
+
+## Creating Your Own Skills
+
+Ask Claude to create a skill:
+
+```bash
+$ claude
+> Create a skill called "test-reporter" that reads test results from
+> jest output and generates a markdown summary with pass/fail counts
+```
+
+Claude will generate `.claude/skills/test-reporter/SKILL.md` with YAML frontmatter and instructions.
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Agent Skills for Knowledge" icon="book">
+    Preload domain knowledge, API patterns, and procedural instructions into agents via the `skills:` field.
+  </Card>
+  
+  <Card title="Use Standalone Skills for Tasks" icon="play">
+    Create user-invocable skills for reusable tasks like formatting, reporting, or code generation.
+  </Card>
+  
+  <Card title="Mark Agent Skills as Non-Invocable" icon="eye-slash">
+    Set `user-invocable: false` for agent skills to keep the `/` menu clean.
+  </Card>
+  
+  <Card title="Provide Clear Instructions" icon="list-check">
+    Use numbered steps, code examples, and expected outputs to guide execution.
+  </Card>
+</CardGroup>
+
+## Pattern Summary
+
+| Pattern | Invocation | Visibility | Use Case | Example |
+|---------|-----------|------------|----------|----------|
+| **Agent Skill** | Preloaded via `skills:` | `user-invocable: false` | Domain knowledge for agents | `weather-fetcher` |
+| **Standalone Skill** | `Skill` tool or `/command` | User-visible | Reusable tasks | `weather-svg-creator` |
+
+## Related Documentation
+
+<CardGroup cols={3}>
+  <Card title="Commands Implementation" href="/examples/commands-implementation" icon="terminal">
+    Learn how commands invoke skills
+  </Card>
+  
+  <Card title="Subagents Implementation" href="/examples/subagents-implementation" icon="robot">
+    See how agents use preloaded skills
+  </Card>
+  
+  <Card title="Orchestration Workflow" href="/patterns/orchestration-workflow" icon="diagram-project">
+    Understand the complete Command → Agent → Skill pattern
+  </Card>
+</CardGroup>

@@ -1,0 +1,81 @@
+---
+title: Debugging Tips
+description: Essential debugging techniques and tools for troubleshooting Claude Code issues
+---
+
+## Doctor Command
+
+<Tip>
+Use `/doctor` for diagnostics when troubleshooting Claude Code issues. This built-in command checks your setup and identifies common problems.
+</Tip>
+
+<Note>
+See the [CLI Reference](https://code.claude.com/docs/en/cli-reference) for more information on diagnostic commands.
+</Note>
+
+## Background Tasks for Debugging
+
+<Tip>
+Always ask Claude to run the terminal (you want to see logs of) as a background task for better debugging visibility.
+</Tip>
+
+Background tasks allow you to:
+- Monitor logs in real-time
+- See server output while Claude continues working
+- Catch errors that might be hidden in synchronous execution
+
+## Browser Debugging with MCP
+
+<Tip>
+Use MCP servers to let Claude see Chrome console logs on its own:
+- [Claude in Chrome](https://code.claude.com/docs/en/chrome)
+- [Playwright MCP](https://github.com/microsoft/playwright-mcp)
+- [Chrome DevTools MCP](https://developer.chrome.com/blog/chrome-devtools-mcp)
+</Tip>
+
+These tools enable Claude to:
+- Inspect console errors directly
+- Debug browser-based applications
+- Automate testing and debugging workflows
+
+<Note>
+See the [Browser Automation MCP Comparison](/reports/browser-automation-mcp) for detailed analysis of these tools.
+</Note>
+
+## Visual Debugging
+
+<Tip>
+Provide screenshots of the issue when reporting visual bugs or UI problems. Claude can analyze images to better understand what's wrong.
+</Tip>
+
+## Cross-Model QA
+
+<Tip>
+Use a different model for QA — e.g., [Codex](https://chatgpt.com/codex) for plan and implementation review. This provides a fresh perspective on your code.
+</Tip>
+
+## Common Debugging Workflows
+
+### Server Issues
+
+1. Run the server as a background task
+2. Ask Claude to check the logs
+3. Use MCP if browser-based debugging is needed
+4. Provide screenshots of browser errors
+
+### Build Errors
+
+1. Run `/doctor` to check for environment issues
+2. Review error messages carefully
+3. Compact context if approaching limits
+4. Use plan mode for complex multi-step fixes
+
+### Permission Issues
+
+<Note>
+Check `/permissions` to see what's allowed. Use wildcard syntax for broader permissions:
+- `Bash(npm run *)`
+- `Edit(/docs/**)`
+</Note>
+
+Alternatively, use `/sandbox` to reduce permission prompts with file and network isolation.

@@ -1,0 +1,262 @@
+---
+title: Sub-agents Best Practice
+description: Complete reference for Claude Code subagents — built-in agent types, custom agent definitions, and frontmatter fields
+icon: users
+---
+
+<Info>
+  **Last Updated:** February 28, 2026 3:22 PM PKT
+</Info>
+
+Complete reference for Claude Code subagents — built-in agent types, custom agent definitions, and frontmatter fields.
+
+## Frontmatter Fields
+
+<ResponseField name="name" type="string" required>
+  Unique identifier using lowercase letters and hyphens
+</ResponseField>
+
+<ResponseField name="description" type="string" required>
+  When to invoke. Use `"PROACTIVELY"` for auto-invocation by Claude
+</ResponseField>
+
+<ResponseField name="tools" type="string | list">
+  Comma-separated allowlist of tools (e.g., `Read, Write, Edit, Bash`). Inherits all tools if omitted. Supports `Task(agent_type)` syntax to restrict spawnable subagents
+</ResponseField>
+
+<ResponseField name="disallowedTools" type="string | list">
+  Tools to deny, removed from inherited or specified list
+</ResponseField>
+
+<ResponseField name="model" type="string">
+  Model alias: `haiku`, `sonnet`, `opus`, or `inherit` (default: `inherit`)
+</ResponseField>
+
+<ResponseField name="permissionMode" type="string">
+  Permission mode: `default`, `acceptEdits`, `dontAsk`, `bypassPermissions`, or `plan`
+</ResponseField>
+
+<ResponseField name="maxTurns" type="integer">
+  Maximum number of agentic turns before the subagent stops
+</ResponseField>
+
+<ResponseField name="skills" type="list">
+  Skill names to preload into agent context at startup (full content injected, not just made available)
+</ResponseField>
+
+<ResponseField name="mcpServers" type="list">
+  MCP servers for this subagent — server name strings or inline `{name: config}` objects
+</ResponseField>
+
+<ResponseField name="hooks" type="object">
+  Lifecycle hooks scoped to this subagent: `PreToolUse`, `PostToolUse`, `Stop` (converted to `SubagentStop` at runtime)
+</ResponseField>
+
+<ResponseField name="memory" type="string">
+  Persistent memory scope: `user`, `project`, or `local`
+</ResponseField>
+
+<ResponseField name="background" type="boolean">
+  Set to `true` to always run as a background task (default: `false`)
+</ResponseField>
+
+<ResponseField name="isolation" type="string">
+  Set to `"worktree"` to run in a temporary git worktree (auto-cleaned if no changes)
+</ResponseField>
+
+<ResponseField name="color" type="string">
+  CLI output color for visual distinction (e.g., `green`, `magenta`). Functional but absent from official frontmatter table — documented in interactive quickstart only
+</ResponseField>
+
+## Memory Scopes
+
+| Scope | Storage Location | Shared | Version Controlled |
+|-------|-----------------|--------|--------------------|
+| `user` | `~/.claude/agent-memory/<name>/` | No | No |
+| `project` | `.claude/agent-memory/<name>/` | Yes | Yes |
+| `local` | `.claude/agent-memory-local/<name>/` | No | No |
+
+<Info>
+  See [claude-agent-memory.md](../claude-agent-memory.md) for full details.
+</Info>
+
+## Invocation
+
+Agents are invoked via the **Task tool**, never via bash commands:
+
+```python
+Task(subagent_type="agent-name", description="...", prompt="...", model="haiku")
+```
+
+<Warning>
+  **Critical:** Subagents cannot invoke other subagents via bash commands. Always use the Task tool.
+</Warning>
+
+Other invocation and management methods:
+
+<CardGroup cols={2}>
+  <Card title="CLI Flag" icon="flag">
+    `--agents '{...}'` — Define session-scoped agents via JSON
+  </Card>
+  <Card title="List Agents" icon="list">
+    `claude agents` — List all configured agents grouped by source
+  </Card>
+  <Card title="Interactive Management" icon="sliders">
+    `/agents` — Create, edit, and manage agents interactively
+  </Card>
+  <Card title="Command Delegation" icon="forward">
+    A command file can delegate to an agent
+  </Card>
+  <Card title="Agent Resumption" icon="rotate-right">
+    Completed subagents can be resumed with their agent ID
+  </Card>
+</CardGroup>
+
+## Example: Minimal Agent
+
+```yaml
+---
+name: code-reviewer
+description: Reviews code for quality issues
+tools: Read, Grep, Glob
+model: haiku
+---
+
+Review the code for quality issues and report findings.
+```
+
+## Example: Full-Featured Agent (All Fields)
+
+```yaml
+---
+name: deploy-manager
+description: Use this agent PROACTIVELY for deployment pipelines and release management
+tools: Read, Write, Edit, Bash, Grep, Glob, Task(monitor, rollback)
+disallowedTools: NotebookEdit
+model: sonnet
+permissionMode: acceptEdits
+maxTurns: 25
+skills:
+  - deploy-checklist
+  - rollback-procedures
+mcpServers:
+  - slack
+  - name: pagerduty
+    command: npx
+    args: ["-y", "@pagerduty/mcp-server"]
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "./scripts/validate-deploy-command.sh"
+  PostToolUse:
+    - matcher: "Write"
+      hooks:
+        - type: command
+          command: "./scripts/log-file-changes.sh"
+  Stop:
+    - hooks:
+        - type: command
+          command: "./scripts/notify-deploy-complete.sh"
+memory: project
+background: false
+isolation: worktree
+color: blue
+---
+
+You are a deployment manager. Follow the deploy-checklist skill for
+pre-flight checks and use rollback-procedures if any step fails.
+Notify the team via Slack when deployment completes.
+```
+
+## Scope and Priority
+
+When multiple subagents share the same name, the higher-priority location wins:
+
+| Location | Scope | Priority |
+|----------|-------|----------|
+| `--agents` CLI flag | Current session | 1 (highest) |
+| `.claude/agents/` | Current project | 2 |
+| `~/.claude/agents/` | All your projects | 3 |
+| Plugin's `agents/` directory | Where plugin is enabled | 4 (lowest) |
+
+## Claude Agents
+
+### Official Claude Agents
+
+Built-in agent types available via `subagent_type` in the Task tool:
+
+<AccordionGroup>
+  <Accordion title="general-purpose" icon="star">
+    **Model:** inherit | **Tools:** All
+    
+    Complex multi-step tasks — the default agent type for research, code search, and autonomous work
+  </Accordion>
+  
+  <Accordion title="Explore" icon="magnifying-glass">
+    **Model:** haiku | **Tools:** Read-only (no Write, Edit)
+    
+    Fast codebase search and exploration — optimized for finding files, searching code, and answering codebase questions
+  </Accordion>
+  
+  <Accordion title="Plan" icon="lightbulb">
+    **Model:** inherit | **Tools:** Read-only (no Write, Edit)
+    
+    Pre-planning research in plan mode — explores the codebase and designs implementation approaches before writing code
+  </Accordion>
+  
+  <Accordion title="claude-code-guide" icon="book">
+    **Model:** inherit | **Tools:** Glob, Grep, Read, WebFetch, WebSearch
+    
+    Answers questions about Claude Code features, hooks, slash commands, MCP servers, settings, IDE integrations, and keyboard shortcuts
+  </Accordion>
+  
+  <Accordion title="statusline-setup" icon="bars">
+    **Model:** inherit | **Tools:** Read, Edit
+    
+    Configures the user's Claude Code status line setting
+  </Accordion>
+</AccordionGroup>
+
+### Custom Agents Example
+
+<Tabs>
+  <Tab title="presentation-curator">
+    **Model:** sonnet | **Color:** magenta
+    
+    **Tools:** Read, Write, Edit, Grep, Glob
+    
+    **Skills:**
+    - presentation/vibe-to-agentic-framework
+    - presentation/presentation-structure
+    - presentation/presentation-styling
+    
+    Manages presentation updates with self-evolving skills.
+  </Tab>
+  
+  <Tab title="weather-agent">
+    **Model:** sonnet | **Color:** teal | **Memory:** project
+    
+    **Tools:** WebFetch, Read, Write, Edit
+    
+    **Skills:**
+    - weather-fetcher
+    
+    Fetches weather data and creates visual output.
+  </Tab>
+</Tabs>
+
+## Sources
+
+<CardGroup cols={2}>
+  <Card title="Create Custom Subagents" icon="book" href="https://code.claude.com/docs/en/sub-agents">
+    Official documentation for subagent creation
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="https://code.claude.com/docs/en/cli-reference">
+    Command-line flags and options
+  </Card>
+  <Card title="CHANGELOG" icon="clock-rotate-left" href="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md">
+    Latest updates and features
+  </Card>
+</CardGroup>

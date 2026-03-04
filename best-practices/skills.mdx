@@ -1,0 +1,236 @@
+---
+title: Skills Best Practice
+description: Complete reference for Claude Code skills — skill definitions, frontmatter fields, and invocation patterns
+icon: wand-magic-sparkles
+---
+
+<Info>
+  **Last Updated:** March 2, 2026
+</Info>
+
+Complete reference for Claude Code skills — skill definitions, frontmatter fields, and invocation patterns.
+
+## Frontmatter Fields
+
+Skills are defined in `.claude/skills/<name>/SKILL.md` with optional YAML frontmatter.
+
+<ResponseField name="name" type="string">
+  Display name and `/slash-command` identifier. Defaults to the directory name if omitted
+</ResponseField>
+
+<ResponseField name="description" type="string" recommended>
+  What the skill does. Shown in autocomplete and used by Claude for auto-discovery
+</ResponseField>
+
+<ResponseField name="argument-hint" type="string">
+  Hint shown during autocomplete (e.g., `[issue-number]`, `[filename]`)
+</ResponseField>
+
+<ResponseField name="disable-model-invocation" type="boolean">
+  Set `true` to prevent Claude from automatically invoking this skill
+</ResponseField>
+
+<ResponseField name="user-invocable" type="boolean">
+  Set `false` to hide from the `/` menu — skill becomes background knowledge only, intended for agent preloading
+</ResponseField>
+
+<ResponseField name="allowed-tools" type="string">
+  Tools allowed without permission prompts when this skill is active
+</ResponseField>
+
+<ResponseField name="model" type="string">
+  Model to use when this skill runs (e.g., `haiku`, `sonnet`, `opus`)
+</ResponseField>
+
+<ResponseField name="context" type="string">
+  Set to `fork` to run the skill in an isolated subagent context
+</ResponseField>
+
+<ResponseField name="agent" type="string">
+  Subagent type when `context: fork` is set (default: `general-purpose`)
+</ResponseField>
+
+<ResponseField name="hooks" type="object">
+  Lifecycle hooks scoped to this skill
+</ResponseField>
+
+## Two Skill Patterns
+
+<CardGroup cols={2}>
+  <Card title="Skill" icon="play">
+    **Loading:** On-demand
+    
+    **Invocation:** `/skill-name` or `Skill(skill: "name")` tool
+    
+    **Use Case:** Standalone reusable workflows invoked by commands or Claude
+  </Card>
+  
+  <Card title="Agent Skill" icon="brain">
+    **Loading:** Preloaded at agent startup via `skills:` field
+    
+    **Invocation:** Automatic — full content injected into agent context
+    
+    **Use Case:** Domain knowledge or procedures baked into a specific agent
+  </Card>
+</CardGroup>
+
+<Tip>
+  Agent skills are **preloaded** into the agent's context at startup, making them immediately available without explicit invocation.
+</Tip>
+
+## String Substitutions
+
+Available inside skill markdown for dynamic values:
+
+| Variable | Description |
+|----------|-------------|
+| `$ARGUMENTS` | All arguments passed when invoking the skill |
+| `$ARGUMENTS[N]` | Access a specific argument by 0-based index |
+| `$N` | Shorthand for `$ARGUMENTS[N]` (e.g., `$0`, `$1`) |
+| `${CLAUDE_SESSION_ID}` | Current session identifier |
+| `` !`command` `` | Dynamic context injection — shell command output replaces the placeholder before Claude sees it |
+
+## Invocation
+
+<Tabs>
+  <Tab title="Direct">
+    ```bash
+    /skill-name
+    /skill-name [args]
+    ```
+    Invoke directly from the slash command menu with optional arguments.
+  </Tab>
+  
+  <Tab title="Programmatic">
+    ```python
+    Skill(skill: "name")
+    ```
+    Programmatic invocation via the Skill tool (used in commands and agents).
+  </Tab>
+  
+  <Tab title="Agent Preload">
+    ```yaml
+    skills: [name]
+    ```
+    Preload into an agent — full skill content injected at startup.
+  </Tab>
+  
+  <Tab title="Subdirectories">
+    ```bash
+    /subdir:skill-name
+    ```
+    Skills in subdirectories use colon notation.
+  </Tab>
+</Tabs>
+
+## Example: Minimal Skill
+
+```yaml
+---
+description: Summarize staged changes into a concise changelog entry
+---
+
+Summarize the git diff in context into a one-paragraph changelog entry,
+focusing on what changed and why.
+```
+
+## Example: Minimal Agent Skill
+
+A skill preloaded into an agent as background knowledge — hidden from the `/` menu:
+
+```yaml
+---
+name: deploy-checklist
+description: Pre-flight deployment checks for production releases
+user-invocable: false
+---
+
+# Deploy Checklist
+
+Before any production deployment:
+1. Run all tests: `npm test`
+2. Check for uncommitted changes: `git status`
+3. Verify environment variables are set
+4. Confirm database migrations are ready
+```
+
+<Info>
+  Agent skills with `user-invocable: false` are invisible to the user but available to the agent that preloads them.
+</Info>
+
+## Example: Full-Featured Skill (All Fields)
+
+```yaml
+---
+name: code-review
+description: Review code for quality, security, and performance issues
+argument-hint: [file-path]
+allowed-tools: Read, Grep, Glob
+model: sonnet
+context: fork
+agent: general-purpose
+hooks:
+  Stop:
+    - hooks:
+        - type: command
+          command: "./scripts/log-review-complete.sh"
+---
+
+Review the code at $0.
+
+## Checklist
+- [ ] Security: injection, XSS, hardcoded secrets
+- [ ] Performance: N+1 queries, unnecessary loops
+- [ ] Quality: naming, complexity, test coverage
+- [ ] Error handling: edge cases, failure modes
+```
+
+## Scope and Priority
+
+When multiple skills share the same name, the higher-priority location wins:
+
+| Location | Scope | Priority |
+|----------|-------|----------|
+| Project (`.claude/skills/`) | This project only | 1 (highest) |
+| Personal (`~/.claude/skills/`) | All your projects | 2 |
+| Plugin (`<plugin>/skills/`) | Where plugin is enabled | 3 (lowest) |
+
+## Skills Workflow Example
+
+The **Command → Agent → Skill** architecture demonstrates both patterns:
+
+<Steps>
+  <Step title="Command Entry Point">
+    `/weather-orchestrator` command asks user for C/F preference
+  </Step>
+  
+  <Step title="Agent Invocation">
+    Command invokes `weather-agent` subagent via Task tool
+  </Step>
+  
+  <Step title="Agent Skill (Preloaded)">
+    Agent uses preloaded `weather-fetcher` skill to fetch temperature from API
+  </Step>
+  
+  <Step title="Skill Invocation">
+    Command invokes `weather-svg-creator` skill to create visual output
+  </Step>
+</Steps>
+
+<Note>
+  Two patterns in action: **agent skills** (preloaded via `skills:` field) vs **skills** (invoked via `Skill` tool).
+</Note>
+
+## Sources
+
+<CardGroup cols={2}>
+  <Card title="Claude Code Skills" icon="book" href="https://code.claude.com/docs/en/skills">
+    Official skills documentation
+  </Card>
+  <Card title="Skills Discovery in Monorepos" icon="diagram-project" href="../reports/claude-skills-for-larger-mono-repos.md">
+    How skills are discovered in large projects
+  </Card>
+  <Card title="CHANGELOG" icon="clock-rotate-left" href="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md">
+    Latest updates and features
+  </Card>
+</CardGroup>

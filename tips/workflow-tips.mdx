@@ -1,0 +1,82 @@
+---
+title: Workflow Tips
+description: Practical workflow optimization tips for Claude Code development
+---
+
+## CLAUDE.md Best Practices
+
+<Tip>
+Keep CLAUDE.md under 150 lines for reliable adherence. [HumanLayer uses 60 lines](https://www.humanlayer.dev/blog/writing-a-good-claude-md) as their guideline, though this isn't 100% guaranteed.
+</Tip>
+
+### Multiple CLAUDE.md for Monorepos
+
+For large monorepo projects, use multiple CLAUDE.md files with ancestor + descendant loading.
+
+<Note>
+See [Memory Best Practices](/best-practices/memory) for detailed guidance on CLAUDE.md loading behavior in monorepos.
+</Note>
+
+## Commands vs Agents
+
+<Tip>
+Use **commands** for your workflows instead of **agents**. Commands provide better entry points for workflows.
+</Tip>
+
+Create feature-specific subagents with skills (progressive disclosure) instead of general-purpose agents like "qa" or "backend engineer."
+
+## Context Management
+
+### Manual Compacting
+
+<Warning>
+Avoid the "agent dumb zone" — perform manual `/compact` at around 50% context usage for best results.
+</Warning>
+
+### Memory and Rules Limitations
+
+<Note>
+`/memory`, `/rules`, and `constitution.md` do not guarantee anything. These are guidance mechanisms, not strict enforcement.
+</Note>
+
+## Planning and Execution
+
+### Always Start with Plan Mode
+
+<Tip>
+Always start complex tasks with [plan mode](https://code.claude.com/docs/en/common-workflows) for better task breakdown and execution.
+</Tip>
+
+### Task Size Guidelines
+
+- Vanilla Claude Code is better than complex workflows for smaller tasks
+- Break subtasks small enough to complete in under 50% context usage
+- Use human-gated task list workflow for multi-step tasks
+
+## Advanced Workflows
+
+### Parallel Development
+
+<Tip>
+Use [agent teams](https://code.claude.com/docs/en/agent-teams) and [git worktrees](https://x.com/bcherny/status/2025007393290272904) for parallel development across isolated branches.
+</Tip>
+
+### Long-Running Tasks
+
+<Tip>
+Use the [Ralph Wiggum plugin](https://github.com/shanraisshan/novel-llm-26) for long-running autonomous tasks that iterate until completion.
+</Tip>
+
+## Daily and Hourly Habits
+
+### Daily Updates
+
+<Note>
+[Update](https://code.claude.com/docs/en/setup) Claude Code daily and start your day by reading the [changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md).
+</Note>
+
+### Commit Often
+
+<Tip>
+Commit often — as soon as a task is completed, commit. This creates better checkpoints for rewinding and helps with context management.
+</Tip>
